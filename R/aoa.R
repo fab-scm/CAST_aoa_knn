@@ -135,7 +135,8 @@ aoa <- function(newdata,
                 CVtest=NULL,
                 CVtrain=NULL,
                 method="L2",
-                useWeight=TRUE) {
+                useWeight=TRUE,
+                k = 1) {
 
   # handling of different raster formats
   as_stars <- FALSE
@@ -155,12 +156,33 @@ aoa <- function(newdata,
   }
 
 
+  if (inherits(model, "train")) {
+    if (inherits(k, "character") && k == "max") {
+      k <- as.integer(model$finalModel$num.samples)
+    } else if (inherits(k, c("numeric", "integer"))) {
+      k <- as.integer(k)
+      if (k > model$finalModel$num.samples) {
+        stop(paste(
+          "k must be smaller or equal to the number of training samples.",
+          "Your model was calculated based on",
+          as.character(model$finalModel$num.samples),
+          "samples."
+        ))
+      }
+    } else if (inherits(k, "character") && k != "opt") {
+      stop("The input for the parameter k is invalid. It must be an integer smaller than the size of samples used for model training.")
+    }
+  }
 
 
   # if not provided, compute train DI
   if(!inherits(trainDI, "trainDI")){
     message("No trainDI provided. Computing DI of training data...")
     trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain,method, useWeight)
+  }
+
+  if (k =="opt") {
+    k <- trainDI$avrgQD
   }
 
   message("Computing DI of newdata...")
@@ -236,48 +258,82 @@ aoa <- function(newdata,
 
   # Distance Calculation ---------
 
-  mindist <- rep(NA, nrow(newdata))
-  okrows <- which(apply(newdata, 1, function(x) all(!is.na(x))))
-  newdataCC <- newdata[okrows,]
+  okrows <- which(apply(newdata, 1, function(x)
+    all(!is.na(x))))
+  newdataCC <- newdata[okrows, ]
 
-
-  if(method=="MD"){
-    if(dim(train_scaled)[2] == 1){
+  if (method == "MD") {
+    if (dim(train_scaled)[2] == 1) {
       S <- matrix(stats::var(train_scaled), 1, 1)
-      newdataCC <- as.matrix(newdataCC,ncol=1)
+      newdataCC <- as.matrix(newdataCC, ncol = 1)
     } else {
       S <- stats::cov(train_scaled)
     }
     S_inv <- MASS::ginv(S)
   }
 
-  mindist[okrows] <- .mindistfun(newdataCC, train_scaled, method, S_inv)
+  if (k == 1) {
+    mindist <- rep(NA, nrow(newdata))
+    mindist[okrows] <-
+      .mindistfun(newdataCC, train_scaled, method, S_inv)
+    DI_out <- mindist / trainDI$trainDist_avrgmean
+  }
 
+  if (k > 1) {
+    knndist <- matrix(NA, nrow(newdata), k)
+    knndist[okrows,] <- .knndistfun(newdataCC, train_scaled, method, S_inv, k = k)
 
-  DI_out <- mindist/trainDI$trainDist_avrgmean
+    DI_out_knndist <- knndist / trainDI$trainDist_avrgmean
+    DI_out <- c(DI_out_knndist[,1])
+
+    count_list <-
+      apply(DI_out_knndist, 1, function(row)
+        sum(row < trainDI$threshold))
+
+    QD_out <- count_list
+  }
 
   message("Computing AOA...")
 
   #### Create Mask for AOA and return statistics
-  if (inherits(out, "SpatRaster")){
+  if (inherits(out, "SpatRaster")) {
     terra::values(out) <- DI_out
+
     AOA <- out
     terra::values(AOA) <- 1
-    AOA[out>trainDI$thres] <- 0
-    AOA <- terra::mask(AOA,out)
+    AOA[out > trainDI$thres] <- 0
+    AOA <- terra::mask(AOA, out)
     names(AOA) = "AOA"
+
+    if (k > 1) {
+      QD <- out
+      terra::values(QD) <- QD_out
+      names(QD) = "QD"
+
+      # DENSITY <- out
+      # terra::values(DENSITY) <- AOA_rel_density
+      # names(DENSITY) <- "DENSITY"
+    }
 
 
     # handling of different raster formats.
-    if (as_stars){
+    if (as_stars) {
       out <- stars::st_as_stars(out)
       AOA <- stars::st_as_stars(AOA)
+
+      if (k > 1) {
+        QD <- stars::st_as_stars(QD)
+      }
     }
 
-  }else{
+  } else{
     out <- DI_out
-    AOA <- rep(1,length(out))
-    AOA[out>trainDI$thres] <- 0
+    AOA <- rep(1, length(out))
+    AOA[out > trainDI$thres] <- 0
+
+    if (k > 1) {
+      QD <- QD_out
+    }
   }
 
 
@@ -286,13 +342,63 @@ aoa <- function(newdata,
 #                                    "threshold" = trainDI$thres)
 #  attributes(AOA)$TrainDI <- trainDI$trainDI
 
-  result <- list(parameters = trainDI,
-                 DI = out,
-                 AOA = AOA)
+  if (k == 1) {
+    result <- list(
+      parameters = trainDI,
+      DI = out,
+      AOA = AOA
+    )
+  } else {
+    result <- list(
+      parameters = trainDI,
+      DI = out,
+      AOA = AOA,
+      QD = QD
+    )
+  }
 
   class(result) <- "aoa"
   return(result)
-
 }
 
+
+.knndistfun <-
+  function (point,
+            reference,
+            method,
+            S_inv = NULL,
+            k = k,
+            pb = pb) {
+    if (method == "L2") {
+      # Euclidean Distance
+      return(FNN::knnx.dist(reference, point, k = k))
+    } else if (method == "MD") {
+      # Mahalanobis Distance
+      message("Calculating Mahalanobis Distance Matrix...")
+
+      num_points <- dim(point)[1]
+      num_reference <- dim(reference)[1]
+
+      pb <- txtProgressBar(min = 0,
+                           max = num_points,
+                           style = 3)
+
+      distances <- matrix(NA, nrow = num_points, ncol = k)
+
+      for (y in 1:num_points) {
+        dist_vector <- numeric(num_reference)
+
+        for (x in 1:num_reference) {
+          diff <- point[y, ] - reference[x, ]
+          dist_vector[x] <- sqrt(t(diff) %*% S_inv %*% diff)
+        }
+
+        sorted_indices <- order(dist_vector)
+        distances[y, ] <- dist_vector[sorted_indices[1:k]]
+        setTxtProgressBar(pb, y)
+      }
+      close(pb)
+      return(distances)
+    }
+  }
 

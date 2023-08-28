@@ -231,6 +231,24 @@ trainDI <- function(model = NA,
   # note: previous versions of CAST derived the threshold this way:
   #thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
+  # calculate avrgQD
+  avrg_qd <- c()
+  # Get optimal k value from CV folds
+  for (j in  seq(CVtest)) {
+    testFoldDist <-
+      .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
+
+    DItestFoldDist <- testFoldDist / trainDist_avrgmean
+
+    count_list <-
+      apply(DItestFoldDist, 1, function(row)
+        sum(row < thres))
+
+    avrg_qd <- append(avrg_qd, mean(count_list, na.rm = TRUE))
+  }
+
+  avrgQD <- round(mean(avrg_qd))
+
 
   # Return: trainDI Object -------
 
@@ -244,7 +262,8 @@ trainDI <- function(model = NA,
     trainDist_avrgmean = trainDist_avrgmean,
     trainDI = TrainDI,
     threshold = thres,
-    method = method
+    method = method,
+    avrgQD = avrgQD
   )
 
   class(aoa_results) = "trainDI"
