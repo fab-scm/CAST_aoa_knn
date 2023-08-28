@@ -156,7 +156,7 @@ aoa <- function(newdata,
     newdata <- methods::as(newdata, "SpatRaster")
   }
 
-
+  # validate k input
   if (inherits(model, "train")) {
     if (inherits(k, "character") && k == "max") {
       k <- as.integer(model$finalModel$num.samples)
@@ -310,10 +310,6 @@ aoa <- function(newdata,
       QD <- out
       terra::values(QD) <- QD_out
       names(QD) = "QD"
-
-      # DENSITY <- out
-      # terra::values(DENSITY) <- AOA_rel_density
-      # names(DENSITY) <- "DENSITY"
     }
 
 
