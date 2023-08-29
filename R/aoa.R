@@ -24,7 +24,7 @@
 #' Only required if no model is given and only required if CVtrain is not the opposite of CVtest (i.e. if a data point is not used for testing, it is used for training).
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
-#' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
+#' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?q vc
 #' @param k Integer or character. Number of nearest neighbors to be considered for the calculation of the QD.
 #' @details The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
 #' If variables are factors, dummy variables are created prior to weighting and distance calculation.
@@ -258,7 +258,6 @@ aoa <- function(newdata,
 
 
   # Distance Calculation ---------
-
   okrows <- which(apply(newdata, 1, function(x)
     all(!is.na(x))))
   newdataCC <- newdata[okrows, ]

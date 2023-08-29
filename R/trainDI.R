@@ -233,7 +233,6 @@ trainDI <- function(model = NA,
 
   # calculate avrgQD
   avrg_qd <- c()
-  # Get optimal k value from CV folds
   for (j in  seq(CVtest)) {
     testFoldDist <-
       .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
