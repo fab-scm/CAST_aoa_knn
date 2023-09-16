@@ -103,7 +103,8 @@ trainDI <- function(model = NA,
                     CVtest = NULL,
                     CVtrain = NULL,
                     method="L2",
-                    useWeight=TRUE){
+                    useWeight = TRUE,
+                    LPD = FALSE){
 
   # get parameters if they are not provided in function call-----
   if(is.null(train)){train = aoa_get_train(model)}
@@ -229,24 +230,25 @@ trainDI <- function(model = NA,
   thres <- threshold_quantile + threshold_iqr
 
   # note: previous versions of CAST derived the threshold this way:
-  #thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
+  # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
-  # calculate avrgQD
-  avrg_qd <- c()
-  for (j in  seq(CVtest)) {
-    testFoldDist <-
-      .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
+  # calculate avrgLPD
+  if (LPD == TRUE) {
+    avrg_lpd <- c()
+    for (j in  seq(CVtest)) {
+      testFoldDist <-
+        .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
 
-    DItestFoldDist <- testFoldDist / trainDist_avrgmean
+      DItestFoldDist <- testFoldDist / trainDist_avrgmean
 
-    count_list <-
-      apply(DItestFoldDist, 1, function(row)
-        sum(row < thres))
+      count_list <-
+        apply(DItestFoldDist, 1, function(row)
+          sum(row < thres))
 
-    avrg_qd <- append(avrg_qd, mean(count_list, na.rm = TRUE))
+      avrg_lpd <- append(avrg_lpd, mean(count_list, na.rm = TRUE))
+    }
+    avrgLPD <- round(mean(avrg_lpd))
   }
-
-  avrgQD <- round(mean(avrg_qd))
 
 
   # Return: trainDI Object -------
@@ -261,9 +263,12 @@ trainDI <- function(model = NA,
     trainDist_avrgmean = trainDist_avrgmean,
     trainDI = TrainDI,
     threshold = thres,
-    method = method,
-    avrgQD = avrgQD
+    method = method
   )
+
+  if (LPD == TRUE) {
+    aoa_results$avrgLPD <- avrgLPD
+  }
 
   class(aoa_results) = "trainDI"
 

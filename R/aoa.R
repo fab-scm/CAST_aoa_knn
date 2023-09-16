@@ -25,7 +25,7 @@
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?q vc
-#' @param k Integer or character. Number of nearest neighbors to be considered for the calculation of the QD.
+#' @param maxLPD Integer or character. Number of nearest neighbors to be considered for the calculation of the LPD.
 #' @details The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
 #' If variables are factors, dummy variables are created prior to weighting and distance calculation.
 #'
@@ -137,10 +137,12 @@ aoa <- function(newdata,
                 CVtrain=NULL,
                 method="L2",
                 useWeight=TRUE,
-                k = 1) {
+                LPD = FALSE,
+                maxLPD = "opt") {
 
   # handling of different raster formats
   as_stars <- FALSE
+  calc_LPD <- LPD
   leading_digit <- any(grepl("^{1}[0-9]",names(newdata)))
 
   if (inherits(newdata, "stars")) {
@@ -156,22 +158,24 @@ aoa <- function(newdata,
     newdata <- methods::as(newdata, "SpatRaster")
   }
 
-  # validate k input
-  if (inherits(model, "train")) {
-    if (inherits(k, "character") && k == "max") {
-      k <- as.integer(model$finalModel$num.samples)
-    } else if (inherits(k, c("numeric", "integer"))) {
-      k <- as.integer(k)
-      if (k > model$finalModel$num.samples) {
-        stop(paste(
-          "k must be smaller or equal to the number of training samples.",
-          "Your model was calculated based on",
-          as.character(model$finalModel$num.samples),
-          "samples."
-        ))
+  # validate maxLPD input
+  if (calc_LPD == TRUE) {
+    if (inherits(model, "train")) {
+      if (inherits(maxLPD, "character") && maxLPD == "max") {
+        maxLPD <- as.integer(model$finalModel$num.samples)
+      } else if (inherits(maxLPD, c("numeric", "integer"))) {
+        maxLPD <- as.integer(maxLPD)
+        if (maxLPD > model$finalModel$num.samples) {
+          stop(paste(
+            "maxLPD must be smaller or equal to the number of training samples.",
+            "Your model was calculated based on",
+            as.character(model$finalModel$num.samples),
+            "samples."
+          ))
+        }
+      } else if (inherits(maxLPD, "character") && maxLPD != "opt") {
+        stop("The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training.")
       }
-    } else if (inherits(k, "character") && k != "opt") {
-      stop("The input for the parameter k is invalid. It must be an integer smaller than the size of samples used for model training.")
     }
   }
 
@@ -179,11 +183,11 @@ aoa <- function(newdata,
   # if not provided, compute train DI
   if(!inherits(trainDI, "trainDI")){
     message("No trainDI provided. Computing DI of training data...")
-    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain,method, useWeight)
+    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain,method, useWeight, LPD)
   }
 
-  if (k =="opt") {
-    k <- trainDI$avrgQD
+  if (calc_LPD == TRUE && maxLPD =="opt") {
+    maxLPD <- trainDI$avrgLPD
   }
 
   message("Computing DI of newdata...")
@@ -272,16 +276,16 @@ aoa <- function(newdata,
     S_inv <- MASS::ginv(S)
   }
 
-  if (k == 1) {
+  if (calc_LPD == FALSE) {
     mindist <- rep(NA, nrow(newdata))
     mindist[okrows] <-
       .mindistfun(newdataCC, train_scaled, method, S_inv)
     DI_out <- mindist / trainDI$trainDist_avrgmean
   }
 
-  if (k > 1) {
-    knndist <- matrix(NA, nrow(newdata), k)
-    knndist[okrows,] <- .knndistfun(newdataCC, train_scaled, method, S_inv, k = k)
+  if (calc_LPD == TRUE) {
+    knndist <- matrix(NA, nrow(newdata), maxLPD)
+    knndist[okrows,] <- .knndistfun(newdataCC, train_scaled, method, S_inv, maxLPD = maxLPD)
 
     DI_out_knndist <- knndist / trainDI$trainDist_avrgmean
     DI_out <- c(DI_out_knndist[,1])
@@ -290,7 +294,7 @@ aoa <- function(newdata,
       apply(DI_out_knndist, 1, function(row)
         sum(row < trainDI$threshold))
 
-    QD_out <- count_list
+    LPD_out <- count_list
   }
 
   message("Computing AOA...")
@@ -305,10 +309,10 @@ aoa <- function(newdata,
     AOA <- terra::mask(AOA, out)
     names(AOA) = "AOA"
 
-    if (k > 1) {
-      QD <- out
-      terra::values(QD) <- QD_out
-      names(QD) = "QD"
+    if (calc_LPD == TRUE) {
+      LPD <- out
+      terra::values(LPD) <- LPD_out
+      names(LPD) = "LPD"
     }
 
 
@@ -317,8 +321,8 @@ aoa <- function(newdata,
       out <- stars::st_as_stars(out)
       AOA <- stars::st_as_stars(AOA)
 
-      if (k > 1) {
-        QD <- stars::st_as_stars(QD)
+      if (calc_LPD == TRUE) {
+        LPD <- stars::st_as_stars(LPD)
       }
     }
 
@@ -327,8 +331,8 @@ aoa <- function(newdata,
     AOA <- rep(1, length(out))
     AOA[out > trainDI$thres] <- 0
 
-    if (k > 1) {
-      QD <- QD_out
+    if (calc_LPD == TRUE) {
+      LPD <- LPD_out
     }
   }
 
@@ -338,7 +342,7 @@ aoa <- function(newdata,
 #                                    "threshold" = trainDI$thres)
 #  attributes(AOA)$TrainDI <- trainDI$trainDI
 
-  if (k == 1) {
+  if (calc_LPD == FALSE) {
     result <- list(
       parameters = trainDI,
       DI = out,
@@ -349,7 +353,7 @@ aoa <- function(newdata,
       parameters = trainDI,
       DI = out,
       AOA = AOA,
-      QD = QD
+      LPD = LPD
     )
   }
 
@@ -363,11 +367,11 @@ aoa <- function(newdata,
             reference,
             method,
             S_inv = NULL,
-            k = k,
+            maxLPD = maxLPD,
             pb = pb) {
     if (method == "L2") {
       # Euclidean Distance
-      return(FNN::knnx.dist(reference, point, k = k))
+      return(FNN::knnx.dist(reference, point, k = maxLPD))
     } else if (method == "MD") {
       # Mahalanobis Distance
       message("Calculating Mahalanobis Distance Matrix...")
@@ -379,7 +383,7 @@ aoa <- function(newdata,
                            max = num_points,
                            style = 3)
 
-      distances <- matrix(NA, nrow = num_points, ncol = k)
+      distances <- matrix(NA, nrow = num_points, ncol = maxLPD)
 
       for (y in 1:num_points) {
         dist_vector <- numeric(num_reference)
@@ -390,7 +394,7 @@ aoa <- function(newdata,
         }
 
         sorted_indices <- order(dist_vector)
-        distances[y, ] <- dist_vector[sorted_indices[1:k]]
+        distances[y, ] <- dist_vector[sorted_indices[1:maxLPD]]
         setTxtProgressBar(pb, y)
       }
       close(pb)
