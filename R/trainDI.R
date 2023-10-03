@@ -104,7 +104,8 @@ trainDI <- function(model = NA,
                     CVtrain = NULL,
                     method="L2",
                     useWeight = TRUE,
-                    LPD = FALSE){
+                    LPD = FALSE,
+                    maxLPD = "opt"){
 
   # get parameters if they are not provided in function call-----
   if(is.null(train)){train = aoa_get_train(model)}
@@ -232,9 +233,9 @@ trainDI <- function(model = NA,
   # note: previous versions of CAST derived the threshold this way:
   # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
-  # calculate avrgLPD
-  if (LPD == TRUE) {
-    avrg_lpd <- c()
+  # calculate avrgLPD and maxLPD
+  if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
+    trainLPD <- c()
     for (j in  seq(CVtest)) {
       testFoldDist <-
         .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
@@ -245,10 +246,20 @@ trainDI <- function(model = NA,
         apply(DItestFoldDist, 1, function(row)
           sum(row < thres))
 
-      avrg_lpd <- append(avrg_lpd, mean(count_list, na.rm = TRUE))
+      trainLPD <- append(trainLPD, count_list)
     }
-    avrgLPD <- round(mean(avrg_lpd))
+
+    # Average LPD in trainData
+    avrgLPD <- round(mean(trainLPD))
+
+    # Optimal maxLPD ----
+    # maxLPD <- stats::quantile(trainLPD, 0.25,na.rm=TRUE)
+    if (maxLPD == "opt") {
+      maxLPD <- stats::quantile(trainLPD, 0.25,na.rm=TRUE)
+      message(paste("maxLPD was set to", maxLPD))
+    }
   }
+
 
 
   # Return: trainDI Object -------
@@ -266,8 +277,10 @@ trainDI <- function(model = NA,
     method = method
   )
 
-  if (LPD == TRUE) {
+  if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
+    aoa_results$trainLPD <- trainLPD
     aoa_results$avrgLPD <- avrgLPD
+    aoa_results$maxLPD <- maxLPD
   }
 
   class(aoa_results) = "trainDI"
