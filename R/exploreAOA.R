@@ -42,19 +42,6 @@
 #' @aliases exploreAOA
 
 
-#################
-# Load packages # ---------------------------------------------------------------
-#################
-
-library(shiny)
-library(terra)
-library(raster)
-library(leaflet)
-library(viridis)
-library(shinycssloaders)
-library(rlist)
-
-
 ###################
 # Define Function # ------------------------------------------------------------
 ###################
