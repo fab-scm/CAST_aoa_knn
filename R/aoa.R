@@ -215,6 +215,9 @@ aoa <- function(newdata,
   # if not provided, compute train DI
   if(!inherits(trainDI, "trainDI")) {
     message("No trainDI provided. Computing DI of training data...")
+    if(calc_LPD == TRUE) {
+      message("Computing LPD of training data...")
+    }
     trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain, method, useWeight, LPD, maxLPD)
   }
 
@@ -317,6 +320,8 @@ aoa <- function(newdata,
   }
 
   if (calc_LPD == TRUE) {
+    message("Computing LPD of newdata...")
+
     knndist <- matrix(NA, nrow(newdata), maxLPD)
     knndist[okrows,] <- .knndistfun(newdataCC, train_scaled, method, S_inv, maxLPD = maxLPD)
 
