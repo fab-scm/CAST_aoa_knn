@@ -24,8 +24,9 @@
 #' Only required if no model is given and only required if CVtrain is not the opposite of CVtest (i.e. if a data point is not used for testing, it is used for training).
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
-#' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?q vc
-#' @param maxLPD Integer or character. Number of nearest neighbors to be considered for the calculation of the LPD.
+#' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
+#' @param LPD Logical. Indicates wheather the LPD should be calculated or not.
+#' @param maxLPD Integer or character. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Can be 'max' or 'opt' to consider all neighbors or the optimal value of neighbors derived from the CV folds.
 #' @details The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
 #' If variables are factors, dummy variables are created prior to weighting and distance calculation.
 #'
@@ -40,8 +41,8 @@
 #' @return An object of class \code{aoa} containing:
 #'  \item{parameters}{object of class trainDI. see \code{\link{trainDI}}}
 #'  \item{DI}{SpatRaster, stars object or data frame. Dissimilarity index of newdata}
-#'  \item{AOA}{SpatRaster, stars object or data frame. Area of Applicability of newdata.
-#'   AOA has values 0 (outside AOA) and 1 (inside AOA)}
+#'  \item{LPD}{SpatRaster, stars object or data frame. Local Point Density of newdata.}
+#'  \item{AOA}{SpatRaster, stars object or data frame. Area of Applicability of newdata. AOA has values 0 (outside AOA) and 1 (inside AOA)}
 #'
 #' @author
 #' Hanna Meyer
