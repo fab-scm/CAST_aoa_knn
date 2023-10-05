@@ -31,6 +31,7 @@
 #' @references Meyer, H., Pebesma, E. (2021): Predicting into unknown space?
 #' Estimating the area of applicability of spatial prediction models.
 #' Methods in Ecology and Evolution 12: 1620-1633. \doi{10.1111/2041-210X.13650}
+
 #' @examples
 #' \dontrun{
 #'
@@ -180,6 +181,7 @@ exploreAOA <- function(aoa) {
 
   # define marker icon _________________________________________________________
   xmark <- makeIcon(system.file("images","xmark.png",package="CAST"), iconWidth = 18, iconHeight = 18)
+
 
 
   #############
