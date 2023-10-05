@@ -55,7 +55,7 @@ Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
 An object of class \code{aoa} containing:
  \item{parameters}{object of class trainDI. see \code{\link{trainDI}}}
  \item{DI}{SpatRaster, stars object or data frame. Dissimilarity index of newdata}
- \item{LPD}{SpatRaster, stars object or data frame. Quantitative Density of newdata.}
+ \item{LPD}{SpatRaster, stars object or data frame. Local Point Density of newdata.}
  \item{AOA}{SpatRaster, stars object or data frame. Area of Applicability of newdata. AOA has values 0 (outside AOA) and 1 (inside AOA)}
 }
 \description{
