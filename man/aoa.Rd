@@ -14,7 +14,9 @@ aoa(
   CVtest = NULL,
   CVtrain = NULL,
   method = "L2",
-  useWeight = TRUE
+  useWeight = TRUE,
+  LPD = FALSE,
+  maxLPD = "opt"
 )
 }
 \arguments{
@@ -44,13 +46,17 @@ Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.}
 \item{method}{Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.}
 
 \item{useWeight}{Logical. Only if a model is given. Weight variables according to importance in the model?}
+
+\item{LPD}{Logical. Indicates wheather the LPD should be calculated or not.}
+
+\item{maxLPD}{Integer or character. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Can be 'max' or 'opt' to consider all neighbors or the optimal value of neighbors derived from the CV folds.}
 }
 \value{
 An object of class \code{aoa} containing:
  \item{parameters}{object of class trainDI. see \code{\link{trainDI}}}
  \item{DI}{SpatRaster, stars object or data frame. Dissimilarity index of newdata}
- \item{AOA}{SpatRaster, stars object or data frame. Area of Applicability of newdata.
-  AOA has values 0 (outside AOA) and 1 (inside AOA)}
+ \item{LPD}{SpatRaster, stars object or data frame. Quantitative Density of newdata.}
+ \item{AOA}{SpatRaster, stars object or data frame. Area of Applicability of newdata. AOA has values 0 (outside AOA) and 1 (inside AOA)}
 }
 \description{
 This function estimates the Dissimilarity Index (DI) and the derived
