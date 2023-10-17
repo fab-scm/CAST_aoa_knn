@@ -158,8 +158,6 @@ aoa <- function(newdata,
 
   # handling of different raster formats
   as_stars <- FALSE
-  calc_LPD <- LPD
-  method_LPD <- maxLPD
   leading_digit <- any(grepl("^{1}[0-9]",names(newdata)))
 
   if (inherits(newdata, "stars")) {
@@ -175,6 +173,8 @@ aoa <- function(newdata,
     newdata <- methods::as(newdata, "SpatRaster")
   }
 
+  calc_LPD <- LPD
+  method_LPD <- maxLPD
   # validate maxLPD input
   if (calc_LPD == TRUE) {
     if (inherits(model, "train")) {
@@ -183,31 +183,40 @@ aoa <- function(newdata,
       } else if (inherits(maxLPD, c("numeric", "integer"))) {
         maxLPD <- as.integer(maxLPD)
         if (maxLPD > length(model$trainingData[[1]])) {
-          stop(paste(
-            "maxLPD must be smaller or equal to the number of training samples.",
-            "Your model was calculated based on",
-            as.character(length(model$trainingData[[1]])),
-            "samples."
-          ))
+          stop(
+            paste(
+              "maxLPD must be smaller or equal to the number of training samples.",
+              "Your model was calculated based on",
+              as.character(length(model$trainingData[[1]])),
+              "samples."
+            )
+          )
         }
       } else if (inherits(maxLPD, "character") && maxLPD != "opt") {
-        stop("The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'.")
+        stop(
+          "The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'."
+        )
       }
     } else if (!is.null(train)) {
-      if (inherits(maxLPD, "character") && (maxLPD == "max" || maxLPD == "opt")) {
+      if (inherits(maxLPD, "character") &&
+          (maxLPD == "max" || maxLPD == "opt")) {
         maxLPD <- length(train[[1]])
       } else if (inherits(maxLPD, c("numeric", "integer"))) {
         maxLPD <- as.integer(maxLPD)
         if (maxLPD > length(train[[1]])) {
-          stop(paste(
-            "maxLPD must be smaller or equal to the number of training samples.",
-            "Your model was calculated based on",
-            as.character(length(train[[1]])),
-            "samples."
-          ))
+          stop(
+            paste(
+              "maxLPD must be smaller or equal to the number of training samples.",
+              "Your model was calculated based on",
+              as.character(length(train[[1]])),
+              "samples."
+            )
+          )
         }
       } else if (inherits(maxLPD, "character") && maxLPD != "opt") {
-        stop("The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'.")
+        stop(
+          "The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'."
+        )
       }
     }
   }
