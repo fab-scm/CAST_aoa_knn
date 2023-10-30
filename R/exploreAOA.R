@@ -178,7 +178,6 @@ exploreAOA <- function(aoa) {
   xmin <- extent@xmin
   xmax <- extent@xmax
 
-
   # define marker icon _________________________________________________________
   xmark <- makeIcon(system.file("images","xmark.png",package="CAST"), iconWidth = 18, iconHeight = 18)
 
@@ -257,7 +256,19 @@ exploreAOA <- function(aoa) {
           style = "background-color: white; padding: 10px; border-radius: 10px; opacity: 90%; box-shadow: 0px 0px 2px;",
         ),
       )
-    }
+    },
+    absolutePanel(
+      bottom = 20,
+      right = 10,
+      width = 300,
+      style = "background-color: white; padding: 10px; border-radius: 10px; opacity: 90%; box-shadow: 0px 0px 2px; z-index: 9999;",
+      # draggable = TRUE
+      fileInput("trainLocations", label = "Upload your training locations", multiple = FALSE, accept = c(".geojson", ".gpkg")),
+      conditionalPanel(
+        condition = "output.uploadHappened == 'yes'",
+        checkboxInput("showTrainDat", "Show training locations")
+      )
+    )
   )
 
 
@@ -270,9 +281,9 @@ exploreAOA <- function(aoa) {
     rv <- reactiveValues(
       map = NULL,
       clickOccurred = "not clicked",
-      AOA_LPD = rasterImages$AOA_LPD
+      AOA_LPD = rasterImages$AOA_LPD,
+      uploadHappened = "no"
     )
-
 
     # define leaflet map outout ________________________________________________
     output$map <- renderLeaflet({
@@ -358,6 +369,31 @@ exploreAOA <- function(aoa) {
       }
     })
 
+    observeEvent(input$trainLocations, {
+      rv$uploadHappened <- "yes"
+      updateCheckboxInput(session, "showTrainDat", value = TRUE)
+    })
+
+    output$uploadHappened <- reactive({
+      rv$uploadHappened
+    })
+    outputOptions(output, "uploadHappened", suspendWhenHidden = FALSE)
+
+    observeEvent(input$showTrainDat, {
+      if (input$showTrainDat == TRUE && rv$uploadHappened == "yes") {
+          # Read the uploaded GeoJSON/GeoPackage file
+          trainLocations <- st_read(input$trainLocations$datapath)
+          trainLocations <- as_Spatial(trainLocations)
+
+          # Add the GeoJSON data to the Leaflet map
+          leafletProxy("map") %>%
+            addCircleMarkers(data = trainLocations, group = "trainLocations", color = "red", stroke = FALSE, radius = 3, fillOpacity = 10)
+      } else if(input$showTrainDat == FALSE && rv$uploadHappened == "yes") {
+        leafletProxy("map") %>%
+          clearGroup(group = "trainLocations")
+      }
+    })
+
 
     # render model props table _________________________________________________
     output$modelProps <- renderTable(
@@ -380,8 +416,9 @@ exploreAOA <- function(aoa) {
       lat <- click$lat
 
       leafletProxy("map") %>%
-        clearMarkers() %>%
+        removeMarker(layerId = c("xmark")) %>%
         addMarkers(
+          layerId = "xmark",
           lng = lng,
           lat = lat,
           icon = xmark
