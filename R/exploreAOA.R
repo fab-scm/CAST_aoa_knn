@@ -106,7 +106,7 @@ exploreAOA <- function(aoa) {
 
   plots2 <- c()
 
-  plots2$AOA$plot <- generatePlot2(parameters$trainDI, "AOA")
+  plots2$AOA$plot <- generatePlot2(parameters$trainDI, "AOA", thres = parameters$threshold)
   plots2$AOA$title <- "trainDI boxplot"
   plots2$AOA$description <- "The trainDI boxplot shows the distribution of the trainDI values."
 
@@ -767,7 +767,7 @@ generatePlot1 <- function(raster, layer, k = NULL) {
 generatePlot2 <- function(raster, layer, k = NULL, thres = NULL) {
   if (layer == "AOA") {
     dfTrainDI = data.frame(trainDI = as.numeric(raster, na.rm = T))
-    plot = ggplot(dfTrainDI, aes(x = "", y = trainDI)) + geom_boxplot(show.legend = FALSE, fill = "#69b3a2") + geom_hline(aes(yintercept = aoa$parameters$threshold, linetype = "AOA_threshold")) + scale_linetype_manual(name = "", values = c(AOA_threshold = "dashed"))
+    plot = ggplot(dfTrainDI, aes(x = "", y = trainDI)) + geom_boxplot(show.legend = FALSE, fill = "#69b3a2") + geom_hline(aes(yintercept = thres, linetype = "AOA_threshold")) + scale_linetype_manual(name = "", values = c(AOA_threshold = "dashed"))
     plot = ggplotly(plot) %>% layout(legend = list(bgcolor = "rgba(0,0,0,0)", x = 0.95, xanchor = "right", y = 1, yanchor = "top")) %>% config(displayModeBar = FALSE)
   } else if (layer == "DI") {
     plot = NULL
