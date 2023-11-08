@@ -60,6 +60,7 @@ exploreAOA <- function(aoa) {
   #############
 
   # define raster layers and layer names _______________________________________
+  message("Loading data...")
   LPD_available <- "LPD" %in% names(aoa)
   parameters <- aoa$parameters
   rasterImages <- c()
@@ -81,12 +82,46 @@ exploreAOA <- function(aoa) {
 
 
   # calculate data plots _______________________________________________________
-  plots <- c()
-  plots$AOA <- generatePlot(rasterImages$AOA, "AOA")
-  plots$DI <- generatePlot(rasterImages$DI, "DI")
+  message("Generating plots...")
+  plots1 <- c()
+
+  plots1$AOA$plot <- generatePlot1(rasterImages$AOA, "AOA")
+  plots1$AOA$title <- "AOA histogram"
+  plots1$AOA$description <- "The AOA histogram shows the distribution of the AOA values. The AOA values are either 0 (outside AOA) or 1 (inside AOA)."
+
+  plots1$DI$plot <- generatePlot1(rasterImages$DI, "DI")
+  plots1$DI$title <- "DI density plot"
+  plots1$DI$description <- "The DI density plot shows the distribution of the DI values."
+
   if (LPD_available) {
-    plots$LPD <- generatePlot(rasterImages$LPD, "LPD")
-    plots$AOA_LPD <- generatePlot(rasterImages$LPD, "AOA_LPD", 1) #init with k = 1
+    plots1$LPD$plot <- generatePlot1(rasterImages$LPD, "LPD")
+    plots1$LPD$title <- "LPD histogram"
+    plots1$LPD$description <- "The LPD histogram shows the distribution of the LPD values. The LPD values are the number of training data points for which the DI is smaller than the threshold."
+
+    plots1$AOA_LPD$plot <- generatePlot1(rasterImages$LPD, "AOA_LPD", 1) #init with k = 1
+    plots1$AOA_LPD$title <- "LPD histogram (AOA colored)"
+    plots1$AOA_LPD$description <- "The LPD (AOA colored) histogram shows the distribution of the LPD values."
+  }
+
+
+  plots2 <- c()
+
+  plots2$AOA$plot <- generatePlot2(rasterImages$AOA, "AOA")
+  plots2$AOA$title <- "AOA (LPD-dependent) histogram"
+  plots2$AOA$description <- "The AOA (LPD-dependent) histogram shows the distribution of the AOA (LPD-dependent) values. The AOA (LPD-dependent) values are either 0 (outside AOA) or 1 (inside AOA)."
+
+  plots2$DI$plot <- ggplotly(plot(aoa)) %>% layout(legend = list(bgcolor = "rgba(0,0,0,0)", x = 0.95, xanchor = "right", y = 1, yanchor = "top")) %>% config(displayModeBar = FALSE)
+  plots2$DI$title <- "trainDI, predictionDI density plot"
+  plots2$DI$description <- "The trainDI, predictionDI density plot shows the distribution of the trainDI and predictionDI values."
+
+  if (LPD_available) {
+    plots2$LPD$plot <- generatePlot2(rasterImages, "LPD", thres = parameters$threshold)
+    plots2$LPD$title <- "LPD~DI plot (binned)"
+    plots2$LPD$description <- "The LPD~DI plot (binned) shows the distribution of the LPD values for each DI value."
+
+    plots2$AOA_LPD$plot <- generatePlot2(rasterImages$LPD, "AOA_LPD", 1) #init with k = 1
+    plots2$AOA_LPD$title <- "AOA (LPD-dependent) histogram"
+    plots2$AOA_LPD$description <- "The AOA (LPD-dependent) histogram shows the distribution of the AOA (LPD-dependent) values. The AOA (LPD-dependent) values are either 0 (outside AOA) or 1 (inside AOA)."
   }
 
 
@@ -129,13 +164,14 @@ exploreAOA <- function(aoa) {
         colors = c("#fdb138", "#025196"),
         labels = c("Outside (0)", "Inside (1)"),
         values = as.numeric(values(rasterImages$AOA)),
-        title = "AOA (k-dependent)"
+        title = "AOA (LPD-dependent)"
       )
     )
   }
 
 
   # define model props and build data.frame from model props____________________
+  message("Extracting model properties...")
   if (LPD_available) {
     if (!is.null(parameters$avrgLPD)) {
       avrgLPD <- parameters$avrgLPD
@@ -204,82 +240,111 @@ exploreAOA <- function(aoa) {
       iconHeight = 18
     )
 
+  light <- bs_theme(bootswatch = "yeti")
+  dark <- bs_theme(bootswatch = "yeti", bg = "#333", fg = "#fff")
+
+  link_github <- tags$a(shiny::icon("github"), "CAST - exploreAOA", href = "https://github.com/fab-scm/CAST/blob/master/R/exploreAOA.R", target = "_blank")
+
 
 
   #############
   # Define UI # ----------------------------------------------------------------
   #############
 
-  ui <- fluidPage(
-    tags$style('
-      body {width:100%;height:100%; position: fixed; }
-      .col-sm-3 { padding-left: 0px; padding-right: 0px; }
-      .col-sm-9 { padding-left: 0px; padding-right: 0px; }
-    '),
-    sidebarLayout(
-      position = "left",
-      sidebarPanel(
-        width = 3,
-        height = "100vh",
-        selectInput("layerSelect", "Layer",
-                    layerNames),
-        sliderInput(
-          "opacity",
-          "Opacity",
-          min(0),
-          max(1),
-          value = 1,
-          step = 0.01
-        ),
-        if (LPD_available) {
-          conditionalPanel(
-            condition = "input.layerSelect == 'AOA_LPD'",
-            sliderInput(
-              "k",
-              "k",
-              min(1),
-              max(maxLPD),
-              value = 1,
-              step = 1
+  message("Building UI...")
+  ui <- page_navbar(
+    tags$style(
+      ".nomargin .form-group { margin-bottom: 0px; } #pixelValues .table { margin-bottom: 0px; }"
+    ),
+    title = "Explore AOA",
+    theme = light,
+    padding = "0",
+    nav_panel(
+      title = "Map",
+      icon = icon("map"),
+      layout_sidebar(
+        sidebar = sidebar(
+          position = "left",
+          width = 400,
+          open = "always",
+          selectInput("layerSelect", "Layer",
+                      layerNames),
+          sliderInput(
+            "opacity",
+            "Opacity",
+            min(0),
+            max(1),
+            value = 1,
+            step = 0.01
+          ),
+          downloadButton("downloadTiff", "Download GeoTiff"),
+          if (LPD_available) {
+            conditionalPanel(
+              condition = "input.layerSelect == 'AOA_LPD'",
+              tags$hr(style = "border: 1px solid #ccc; width: 100%;"),
+              sliderInput(
+                "k",
+                "Min. LPD",
+                min(1),
+                max(maxLPD),
+                value = 1,
+                step = 1
+              )
             )
-          )
-        },
-        downloadButton("downloadTiff", "Download GeoTiff"),
-        tags$hr(style = "border: 1px solid #ccc; width: 100%;"),
-        fileInput(
-          "trainLocations",
-          label = "Upload your training locations",
-          multiple = FALSE,
-          accept = c(".geojson", ".gpkg")
-        ),
-        conditionalPanel(
-          condition = "output.uploadHappened == 'yes'",
-          checkboxInput("showTrainDat", "Show training locations")
-        ),
-        tags$hr(style = "border: 1px solid #ccc; width: 100%;"),
-        tags$h5(style = "font-weight: bold;", "Model Props:"),
-        tableOutput("modelProps"),
-        conditionalPanel(
-          condition = "output.showPanel == 'clicked'",
+          },
           tags$hr(style = "border: 1px solid #ccc; width: 100%;"),
-          tableOutput("pixelValues")
-          # style = "background-color: white; padding: 10px; border-radius: 10px; opacity: 90%; box-shadow: 0px 0px 2px;"
-        )
-      ),
-      mainPanel(
-        width = 9,
-        leafletOutput(
-          outputId = "map",
-          height = "100vh"
+          fileInput(
+            "trainLocations",
+            label = "Upload your training locations",
+            multiple = FALSE,
+            accept = c(".geojson", ".gpkg")
+          ),
+          conditionalPanel(
+            condition = "output.uploadHappened == 'yes'",
+            tags$div(class = "nomargin", checkboxInput("showTrainDat", "Show training locations"))
+          ),
+          tags$hr(style = "border: 1px solid #ccc; width: 100%;"),
+          tags$h5(style = "font-weight: bold;", "Model Props:"),
+          tableOutput("modelProps"),
         ),
-        absolutePanel(
-          top = 10,
-          right = 10,
-          width = 350,
-          style = "background-color: white; padding: 10px; opacity: 95%; border-radius: 10px; box-shadow: 0px 0px 2px; z-index: 9999;",
-          withSpinner(plotlyOutput("plot"))
+        class = "p-0 gap-0",
+        layout_sidebar(
+          sidebar = sidebar(
+            position = "right",
+            width = 500,
+            card(
+              height = 380,
+              full_screen = TRUE,
+              card_header(textOutput("plot1title"), tooltip(bsicons::bs_icon("question-circle"), textOutput("plot1description"), placement = "right"), class = "d-flex align-items-center gap-1"),
+              card_body(plotlyOutput("plot1"), proxy.height = 380)
+            ),
+            card(
+              height = 380,
+              full_screen = TRUE,
+              card_header(textOutput("plot2title"), tooltip(bsicons::bs_icon("question-circle"), textOutput("plot2description"), placement = "right"), class = "d-flex align-items-center gap-1"),
+              card_body(plotlyOutput("plot2"), proxy.height = 380)
+            )
+          ),
+          class = "p-0 gap-0",
+          leafletOutput(outputId = "map",
+                        height = "100vh"),
+          conditionalPanel(condition = "output.showPanel == 'clicked'",
+                           absolutePanel(
+                             bottom = 40,
+                             left = 10,
+                             width = 170,
+                             # draggable = TRUE,
+                             card(card_header("Pixel values"),card_body(tableOutput("pixelValues"), padding = "4px"))
+                           ))
         )
       )
+    ),
+    nav_spacer(),
+    nav_item(tags$div(class = "nomargin", switchInput(inputId = "dark_mode", value = FALSE, label = icon("moon"), width = "auto", size = "small", inline = TRUE))),
+    nav_menu(
+      title = "Links",
+      nav_item(link_github),
+      align = "right"
     )
   )
 
@@ -288,6 +353,7 @@ exploreAOA <- function(aoa) {
   # Define server # ------------------------------------------------------------
   #################
 
+  message("Building server...")
   server <- function(input, output, session) {
 
     # define reactive values ___________________________________________________
@@ -295,17 +361,25 @@ exploreAOA <- function(aoa) {
       map = NULL,
       clickOccurred = "not clicked",
       AOA_LPD = rasterImages$AOA_LPD,
-      plot = plots$AOA,
+      plot1 = NULL,
+      plot2 = NULL,
       uploadHappened = "no"
     )
 
+
+    # theme handling ___________________________________________________________
+    observe(session$setCurrentTheme(
+      if (isTRUE(input$dark_mode)) dark else light
+    ))
 
     # define leaflet map outout ________________________________________________
     output$map <- renderLeaflet({
       rv$map <-
         leaflet(options = leafletOptions(minZoom = 2, maxZoom = 19)) %>%
         addTiles(group = "OSM") %>%
-        addProviderTiles(providers$OpenStreetMap) %>%
+        addProviderTiles(providers$Esri, group = "Esri") %>%
+        addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Esri World Gray Canvas") %>%
+        addProviderTiles(providers$Esri.WorldImagery, group = "Esri World Imagery") %>%
         setMaxBounds(
           lng1 = xmin - 180,
           # Minimum longitude
@@ -320,7 +394,8 @@ exploreAOA <- function(aoa) {
           lat1 = ymin,
           lng2 = xmax,
           lat2 = ymax
-        )
+        ) %>%
+        addScaleBar(position = "bottomleft")
       rv$map
     })
 
@@ -340,14 +415,20 @@ exploreAOA <- function(aoa) {
             clearControls() %>%
             addRasterImage(rv$AOA_LPD,
                            colors = layerLegendProps$colors,
-                           opacity = input$opacity) %>%
+                           opacity = input$opacity,
+                           group = "Raster") %>%
             addLegend(
-              position = "bottomleft",
+              position = "topright",
               colors = layerLegendProps$colors,
               labels = layerLegendProps$labels,
               values = layerLegendProps$values,
               title = layerLegendProps$title,
               opacity = 1
+            ) %>%
+            addLayersControl(
+              baseGroups = c("OSM", "Esri", "Esri World Gray Canvas", "Esri World Imagery"),
+              overlayGroups = c("Raster"),
+              options = layersControlOptions(position = "topleft")
             )
         }
         if (is.null(layerLegendProps$pal)) {
@@ -356,14 +437,20 @@ exploreAOA <- function(aoa) {
             clearControls() %>%
             addRasterImage(rasterImages[[input$layerSelect]],
                            colors = layerLegendProps$colors,
-                           opacity = input$opacity) %>%
+                           opacity = input$opacity,
+                           group = "Raster") %>%
             addLegend(
-              position = "bottomleft",
+              position = "topright",
               colors = layerLegendProps$colors,
               labels = layerLegendProps$labels,
               values = layerLegendProps$values,
               title = layerLegendProps$title,
               opacity = 1
+            ) %>%
+            addLayersControl(
+              baseGroups = c("OSM", "Esri", "Esri World Gray Canvas", "Esri World Imagery"),
+              overlayGroups = c("Raster"),
+              options = layersControlOptions(position = "topleft")
             )
         } else {
           leafletProxy("map") %>%
@@ -371,13 +458,19 @@ exploreAOA <- function(aoa) {
             clearControls() %>%
             addRasterImage(rasterImages[[input$layerSelect]],
                            colors = layerLegendProps$colors,
-                           opacity = input$opacity) %>%
+                           opacity = input$opacity,
+                           group = "Raster") %>%
             addLegend(
-              position = "bottomleft",
+              position = "topright",
               pal = layerLegendProps$pal,
               values = layerLegendProps$values,
               title = layerLegendProps$title,
               opacity = 1
+            ) %>%
+            addLayersControl(
+              baseGroups = c("OSM", "Esri", "Esri World Gray Canvas", "Esri World Imagery"),
+              overlayGroups = c("Raster"),
+              options = layersControlOptions(position = "topleft")
             )
         }
         hidePageSpinner()
@@ -387,17 +480,38 @@ exploreAOA <- function(aoa) {
 
     # plot handling on input$layerSelect or input$k change _____________________
     observe({
-      showPageSpinner()
+      message("Rendndering plots...")
       if (input$layerSelect == "AOA_LPD"){
-        rv$plot <- generatePlot(rasterImages$LPD, "AOA_LPD", input$k)
+        rv$plot1 <- generatePlot1(rasterImages$LPD, "AOA_LPD", input$k)
+        rv$plot2 <- generatePlot2(rasterImages$LPD, "AOA_LPD", input$k)
       } else {
-        rv$plot <- plots[[input$layerSelect]]
+        rv$plot1 <- plots1[[input$layerSelect]]$plot
+        rv$plot2 <- plots2[[input$layerSelect]]$plot
       }
-      hidePageSpinner()
     })
 
-    output$plot <- renderPlotly({
-      rv$plot
+    output$plot1 <- renderPlotly({
+      rv$plot1
+    })
+
+    output$plot2 <- renderPlotly({
+      rv$plot2
+    })
+
+    output$plot1title <- renderText({
+      plots1[[input$layerSelect]]$title
+    })
+
+    output$plot2title <- renderText({
+      plots2[[input$layerSelect]]$title
+    })
+
+    output$plot1description <- renderText({
+      plots1[[input$layerSelect]]$description
+    })
+
+    output$plot2description <- renderText({
+      plots2[[input$layerSelect]]$description
     })
 
 
@@ -483,8 +597,8 @@ exploreAOA <- function(aoa) {
       # extract raster values
       AOA_value <- as.numeric(extract(rasterImages$AOA,
                                       cbind(lng, lat)))
-      DI_value <- as.numeric(extract(rasterImages$DI,
-                                     cbind(lng, lat)))
+      DI_value <- as.numeric(round(extract(rasterImages$DI,
+                                     cbind(lng, lat)),2))
       if (LPD_available) {
         LPD_value <- as.numeric(extract(rasterImages$LPD,
                                         cbind(lng, lat)))
@@ -492,56 +606,100 @@ exploreAOA <- function(aoa) {
                                             cbind(lng, lat)))
       }
 
-      # write raster values to list
-      values_list <-
-        list(AOA = list(AOA_value),
-             DI = list(DI_value))
+      values_df <- c(c(AOA_value), c(DI_value))
       if (LPD_available) {
-        values_list <- list.append(values_list, LPD = LPD_value)
-        values_list <-
-          list.append(values_list, AOA_LPD = AOA_LPD_value)
+        values_df <- c(values_df, c(LPD_value), c(AOA_LPD_value))
+        rownames <- c("AOA", "DI", "LPD", "AOA_LPD")
+      } else {
+        rownames <- c("AOA", "DI")
       }
 
-      # convert list to df
-      values_list_df <- as.data.frame(do.call(cbind, values_list))
+      # convert to df
+      values_df <- data.frame(values_df)
+      rownames(values_df) <- rownames
 
       # format AOA values for table output
-      if (is.na(values_list_df$AOA)) {
-        values_list_df$AOA <- values_list_df$AOA
-      } else if (as.integer(values_list_df$AOA) == 0) {
-        values_list_df$AOA <- "Outside"
-      } else if (as.integer(values_list_df$AOA) == 1) {
-        values_list_df$AOA <- "Inside"
+      if (is.na(values_df["AOA",])) {
+        values_df["AOA",] <- values_df["AOA",]
+      } else if (as.integer(values_df["AOA",]) == 0) {
+        values_df["AOA",] <- "Outside"
+      } else if (as.integer(values_df["AOA",]) == 1) {
+        values_df["AOA",] <- "Inside"
       }
-
 
       if (LPD_available) {
-        # fromat AOA_LPD values for table output
-        if (is.na(values_list_df$AOA_LPD)) {
-          values_list_df$AOA_LPD <- values_list_df$AOA_LPD
-        } else if (as.integer(values_list_df$AOA_LPD) == 0) {
-          values_list_df$AOA_LPD <- "Outside"
-        } else if (as.integer(values_list_df$AOA_LPD) == 1) {
-          values_list_df$AOA_LPD <- "Inside"
+        # format AOA_LPD values for table output
+        if (is.na(values_df["AOA_LPD",])) {
+          values_df["AOA_LPD",] <- values_df["AOA_LPD",]
+        } else if (as.integer(values_df["AOA_LPD",]) == 0) {
+          values_df["AOA_LPD",] <- "Outside"
+        } else if (as.integer(values_df["AOA_LPD",]) == 1) {
+          values_df["AOA_LPD",] <- "Inside"
         }
-        values_list_df$LPD <- as.integer(values_list_df$LPD)
+        values_df["LPD",] <- as.integer(values_df["LPD",])
       }
 
-      # return data if available at click location
-      if (!is.na(values_list_df$AOA)) {
-        return(values_list_df)
+      if (!is.na(values_df["AOA",])) {
+        return(values_df)
       } else {
-        return("No data available at this location")
+        return("NA")
       }
-    },
-    width = "100%",
-    align = "l")
 
+      # # write raster values to list
+      # values_list <-
+      #   list(AOA = list(AOA_value),
+      #        DI = list(DI_value))
+      # if (LPD_available) {
+      #   values_list <- list.append(values_list, LPD = LPD_value)
+      #   values_list <-
+      #     list.append(values_list, AOA_LPD = AOA_LPD_value)
+      # }
+      #
+      # # convert list to df
+      # values_list_df <- as.data.frame(do.call(cbind, values_list))
+      #
+      # # format AOA values for table output
+      # if (is.na(values_list_df$AOA)) {
+      #   values_list_df$AOA <- values_list_df$AOA
+      # } else if (as.integer(values_list_df$AOA) == 0) {
+      #   values_list_df$AOA <- "Outside"
+      # } else if (as.integer(values_list_df$AOA) == 1) {
+      #   values_list_df$AOA <- "Inside"
+      # }
+      #
+      #
+      # if (LPD_available) {
+      #   # fromat AOA_LPD values for table output
+      #   if (is.na(values_list_df$AOA_LPD)) {
+      #     values_list_df$AOA_LPD <- values_list_df$AOA_LPD
+      #   } else if (as.integer(values_list_df$AOA_LPD) == 0) {
+      #     values_list_df$AOA_LPD <- "Outside"
+      #   } else if (as.integer(values_list_df$AOA_LPD) == 1) {
+      #     values_list_df$AOA_LPD <- "Inside"
+      #   }
+      #   values_list_df$LPD <- as.integer(values_list_df$LPD)
+      # }
+      #
+      # # return data if available at click location
+      # if (!is.na(values_list_df$AOA)) {
+      #   return(values_list_df)
+      # } else {
+      #   return("No data available at this location")
+      # }
+    },
+    # width = "100%",
+    # align = "l")
+    width = "100%",
+    align = "lr",
+    rownames = TRUE,
+    colnames = FALSE,
+    striped = TRUE,
+    hover = TRUE)
 
     # download handler _________________________________________________________
     output$downloadTiff <- downloadHandler(
       filename = function() {
-        paste0(input$layerSelect, ".tiff")
+        paste0(input$layerSelect, ".tif")
       },
       content = function(file) {
         # Generate and save your TIFF data to the file
@@ -551,7 +709,7 @@ exploreAOA <- function(aoa) {
           layer <- rasterImages[[input$layerSelect]]
         }
         # layer <- rasterImages[[input$layerSelect]]
-        raster::writeRaster(layer, filename = file, format = "GTiff")
+        writeRaster(layer, filename = file)
       }
     )
 
@@ -563,34 +721,72 @@ exploreAOA <- function(aoa) {
   # Create the Shiny app object # ----------------------------------------------
   ###############################
 
+  message("Starting Shiny app...")
   shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
 }
 
 
 
 
-generatePlot <- function(raster, layer, k = NULL) {
+
+generatePlot1 <- function(raster, layer, k = NULL) {
   if (layer == "AOA") {
     dfAOA = data.frame(AOA = as.integer(terra::values(raster, na.rm = T)))
-    plot = ggplot(dfAOA, aes(x = factor(AOA), fill = factor(AOA))) + geom_bar(stat = "identity", show.legend = FALSE) + scale_fill_manual(values = c("0" = "#fdb138", "1" = "#025196"))
+    plot = ggplot(dfAOA, aes(x = factor(AOA), fill = factor(after_stat(x)))) +
+      geom_bar(show.legend = FALSE) +
+      geom_text(
+        aes(label=paste(after_stat(round(prop*100, 2)), " %"), group=1),
+        stat='count',
+        nudge_y=8000,
+        show.legend = FALSE
+      ) +
+      scale_fill_manual(values = c("#fdb138", "#025196"))
     plot = plot + xlab("AOA")
-    plot = hide_legend(ggplotly(plotAOA, tooltip = c("count", "AOA")))
+    plot = hide_legend(ggplotly(plot, tooltip = c("count", "AOA")) %>% config(displayModeBar = FALSE))
   } else if (layer == "DI") {
     dfDI = data.frame(DI = as.numeric(terra::values(raster, na.rm = T)))
-    density <- density(dfDI$DI, n = 600, adjust = 1.5)
+    density <- density(dfDI$DI, n = 1024, adjust = 1.5)
     plot = ggplot(data.frame(DI = density$x, density = density$y), aes(DI, density)) + geom_line() +
       geom_segment(aes(xend = DI, yend = 0, colour = DI), show.legend = FALSE) +
       scale_color_viridis()
-    plot = ggplotly(plotDI, tooltip = c("x", "y"))
+    plot = ggplotly(plot, tooltip = c("x", "y")) %>% config(displayModeBar = FALSE)
   } else if (layer == "LPD") {
     dfLPD = data.frame(LPD = as.integer(terra::values(raster , na.rm = T)))
     plot = ggplot(dfLPD, aes(x = LPD, fill = after_stat(x))) + geom_bar(show.legend = FALSE) + scale_fill_viridis()
-    plot = ggplotly(plotLPD, tooltip = c("count", "LPD"))
+    plot = ggplotly(plot, tooltip = c("count", "LPD")) %>% config(displayModeBar = FALSE)
   } else if (layer == "AOA_LPD") {
     dfAOA_LPD = data.frame(LPD = as.integer(terra::values(raster , na.rm = T)))
     dfAOA_LPD <- dfAOA_LPD %>% mutate(AOA = ifelse(LPD < k, 0, 1))
     plot = ggplot(dfAOA_LPD, aes(x = LPD, fill = factor(AOA))) + geom_bar(show.legend = FALSE) + scale_fill_manual(values = c("#fdb138", "#025196"))
-    plot = hide_legend(ggplotly(plot, tooltip = c("count", "LPD")))
+    plot = hide_legend(ggplotly(plot, tooltip = c("count", "LPD")) %>% config(displayModeBar = FALSE))
+  }
+  return(plot)
+}
+
+
+generatePlot2 <- function(raster, layer, k = NULL, thres = NULL) {
+  if (layer == "AOA") {
+    plot = NULL
+  } else if (layer == "DI") {
+    plot = NULL
+  } else if (layer == "LPD") {
+    df = data.frame(DI = as.numeric(terra::values(raster$DI, na.rm = T)), LPD = as.integer(terra::values(raster$LPD, na.rm = T)))
+    plot = ggplot(df, aes(x = LPD, y = DI)) + stat_bin_2d(breaks=list(x = seq(-0.5,max(df$LP),1), y = seq(0, ceiling(max(df$DI)), 0.01))) + scale_fill_viridis(option ="H") + geom_hline(aes(yintercept = thres, linetype = "AOA_threshold")) + scale_linetype_manual(name = "", values = c(AOA_threshold = "dashed"))
+    plot = ggplotly(plot) %>% layout(legend = list(bgcolor = "rgba(0,0,0,0)", x = 0.95, xanchor = "right", y = 1, yanchor = "top")) %>% config(displayModeBar = FALSE)
+  } else if (layer == "AOA_LPD") {
+    dfAOA_LPD = data.frame(LPD = as.integer(terra::values(raster , na.rm = T)))
+    dfAOA_LPD <- dfAOA_LPD %>% mutate(AOA = ifelse(LPD < k, 0, 1))
+    plot = ggplot(dfAOA_LPD, aes(x = factor(AOA), fill = factor(after_stat(x)))) +
+      geom_bar(show.legend = FALSE) +
+      geom_text(
+        aes(label=paste(after_stat(round(prop*100, 2)), " %"), group=1),
+        stat='count',
+        nudge_y=8000,
+        show.legend = FALSE
+      ) +
+      scale_fill_manual(values = c("#fdb138", "#025196"))
+    plot = plot + xlab("AOA")
+    plot = hide_legend(ggplotly(plot, tooltip = c("count", "AOA")) %>% config(displayModeBar = FALSE))
   }
   return(plot)
 }
