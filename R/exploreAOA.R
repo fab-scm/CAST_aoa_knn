@@ -64,11 +64,11 @@ exploreAOA <- function(aoa) {
   LPD_available <- "LPD" %in% names(aoa)
   parameters <- aoa$parameters
   rasterImages <- c()
-  rasterImages$AOA <- aoa$AOA
-  rasterImages$DI <- aoa$DI
+  rasterImages$AOA <- project(aoa$AOA, "epsg:4326")
+  rasterImages$DI <- project(aoa$DI, "epsg:4326")
   if (LPD_available) {
-    rasterImages$LPD <- aoa$LPD
-    rasterImages$AOA_LPD <- aoa$AOA # initialize with AOA
+    rasterImages$LPD <- project(aoa$LPD, "epsg:4326")
+    rasterImages$AOA_LPD <- project(aoa$AOA, "epsg:4326") # initialize with AOA
     layerNames <-
       c(
         "AOA" = "AOA",
