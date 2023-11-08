@@ -644,51 +644,7 @@ exploreAOA <- function(aoa) {
       } else {
         return("NA")
       }
-
-      # # write raster values to list
-      # values_list <-
-      #   list(AOA = list(AOA_value),
-      #        DI = list(DI_value))
-      # if (LPD_available) {
-      #   values_list <- list.append(values_list, LPD = LPD_value)
-      #   values_list <-
-      #     list.append(values_list, AOA_LPD = AOA_LPD_value)
-      # }
-      #
-      # # convert list to df
-      # values_list_df <- as.data.frame(do.call(cbind, values_list))
-      #
-      # # format AOA values for table output
-      # if (is.na(values_list_df$AOA)) {
-      #   values_list_df$AOA <- values_list_df$AOA
-      # } else if (as.integer(values_list_df$AOA) == 0) {
-      #   values_list_df$AOA <- "Outside"
-      # } else if (as.integer(values_list_df$AOA) == 1) {
-      #   values_list_df$AOA <- "Inside"
-      # }
-      #
-      #
-      # if (LPD_available) {
-      #   # fromat AOA_LPD values for table output
-      #   if (is.na(values_list_df$AOA_LPD)) {
-      #     values_list_df$AOA_LPD <- values_list_df$AOA_LPD
-      #   } else if (as.integer(values_list_df$AOA_LPD) == 0) {
-      #     values_list_df$AOA_LPD <- "Outside"
-      #   } else if (as.integer(values_list_df$AOA_LPD) == 1) {
-      #     values_list_df$AOA_LPD <- "Inside"
-      #   }
-      #   values_list_df$LPD <- as.integer(values_list_df$LPD)
-      # }
-      #
-      # # return data if available at click location
-      # if (!is.na(values_list_df$AOA)) {
-      #   return(values_list_df)
-      # } else {
-      #   return("No data available at this location")
-      # }
     },
-    # width = "100%",
-    # align = "l")
     width = "100%",
     align = "lr",
     rownames = TRUE,
