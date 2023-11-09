@@ -110,7 +110,7 @@ exploreAOA <- function(aoa) {
   plots2$AOA$title <- "trainDI boxplot"
   plots2$AOA$description <- "The trainDI boxplot shows the distribution of the trainDI values."
 
-  plots2$DI$plot <- ggplotly(plot(aoa)) %>% layout(legend = list(bgcolor = "rgba(0,0,0,0)", x = 0.95, xanchor = "right", y = 1, yanchor = "top")) %>% config(displayModeBar = FALSE)
+  plots2$DI$plot <- ggplotly(plot(aoa)[[1]]) %>% layout(legend = list(bgcolor = "rgba(0,0,0,0)", x = 0.95, xanchor = "right", y = 1, yanchor = "top")) %>% config(displayModeBar = FALSE)
   plots2$DI$title <- "trainDI, predictionDI density plot"
   plots2$DI$description <- "The trainDI, predictionDI density plot shows the distribution of the trainDI and predictionDI values."
 
@@ -333,7 +333,7 @@ exploreAOA <- function(aoa) {
                              bottom = 40,
                              left = 10,
                              width = 170,
-                             # draggable = TRUE,
+                             draggable = TRUE,
                              card(card_header("Pixel values"),card_body(tableOutput("pixelValues"), padding = "4px"))
                            ))
         )
@@ -595,14 +595,14 @@ exploreAOA <- function(aoa) {
       lat <- click$lat
 
       # extract raster values
-      AOA_value <- as.numeric(extract(rasterImages$AOA,
+      AOA_value <- as.numeric(terra::extract(rasterImages$AOA,
                                       cbind(lng, lat)))
-      DI_value <- as.numeric(round(extract(rasterImages$DI,
+      DI_value <- as.numeric(round(terra::extract(rasterImages$DI,
                                      cbind(lng, lat)),2))
       if (LPD_available) {
-        LPD_value <- as.numeric(extract(rasterImages$LPD,
+        LPD_value <- as.numeric(terra::extract(rasterImages$LPD,
                                         cbind(lng, lat)))
-        AOA_LPD_value <- as.numeric(extract(rv$AOA_LPD,
+        AOA_LPD_value <- as.numeric(terra::extract(rv$AOA_LPD,
                                             cbind(lng, lat)))
       }
 
@@ -729,7 +729,7 @@ generatePlot2 <- function(raster, layer, k = NULL, thres = NULL) {
     plot = NULL
   } else if (layer == "LPD") {
     df = data.frame(DI = as.numeric(terra::values(raster$DI, na.rm = T)), LPD = as.integer(terra::values(raster$LPD, na.rm = T)))
-    plot = ggplot(df, aes(x = LPD, y = DI)) + stat_bin_2d(breaks=list(x = seq(-0.5,max(df$LP),1), y = seq(0, ceiling(max(df$DI)), 0.01))) + scale_fill_viridis(option ="H") + geom_hline(aes(yintercept = thres, linetype = "AOA_threshold")) + scale_linetype_manual(name = "", values = c(AOA_threshold = "dashed"))
+    plot = ggplot(df, aes(x = LPD, y = DI)) + geom_bin_2d(breaks=list(x = seq(-0.5,max(df$LPD)+1,1), y = seq(0, ceiling(max(df$DI)), 0.01))) + scale_fill_viridis(option ="H") + geom_hline(aes(yintercept = thres, linetype = "AOA_threshold")) + scale_linetype_manual(name = "", values = c(AOA_threshold = "dashed"))
     plot = ggplotly(plot) %>% layout(legend = list(bgcolor = "rgba(0,0,0,0)", x = 0.95, xanchor = "right", y = 1, yanchor = "top")) %>% config(displayModeBar = FALSE)
   } else if (layer == "AOA_LPD") {
     dfAOA_LPD = data.frame(LPD = as.integer(terra::values(raster , na.rm = T)))
