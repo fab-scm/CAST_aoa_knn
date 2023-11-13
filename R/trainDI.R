@@ -246,8 +246,13 @@ trainDI <- function(model = NA,
   if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
     trainLPD <- c()
     for (j in  seq(CVtest)) {
-      testFoldDist <-
-        .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
+      if (length(CVtest[[j]]) > 1) {
+        testFoldDist <-
+          .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
+      } else {
+        testFoldDist <-
+          .alldistfun(t(train[CVtest[[j]],]), train[CVtrain[[j]],], method)
+      }
 
       DItestFoldDist <- testFoldDist / trainDist_avrgmean
 
