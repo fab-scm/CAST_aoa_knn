@@ -129,20 +129,6 @@
 #' @aliases aoa
 
 
-# newdata = predictors
-# model=NA
-# trainDI = NA
-# train=trainDat
-# weight=NA
-# variables=names(predictors)
-# CVtest=NULL
-# CVtrain=NULL
-# method="L2"
-# useWeight=FALSE
-# LPD = TRUE
-# maxLPD = "max"
-
-
 aoa <- function(newdata,
                 model=NA,
                 trainDI = NA,
@@ -338,11 +324,11 @@ aoa <- function(newdata,
     DI_out_knndist <- knndist / trainDI$trainDist_avrgmean
     DI_out <- c(DI_out_knndist[,1])
 
-    count_list <-
+    # start_time <- Sys.time()
+    LPD_out <-
       apply(DI_out_knndist, 1, function(row)
         sum(row < trainDI$threshold))
-
-    LPD_out <- count_list
+    # end_time <- Sys.time()
 
     # set maxLPD to max of LPD_out if
     realMaxLPD <- max(LPD_out, na.rm = T)

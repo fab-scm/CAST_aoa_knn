@@ -246,12 +246,22 @@ trainDI <- function(model = NA,
   if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
     trainLPD <- c()
     for (j in  seq(CVtest)) {
+
+      if(method=="MD"){
+        if(dim(train[CVtrain[[j]],])[2] == 1){
+          S <- matrix(stats::var(train[CVtrain[[j]],]), 1, 1)
+        } else {
+          S <- stats::cov(train[CVtrain[[j]],])
+        }
+        S_inv <- MASS::ginv(S)
+      }
+
       if (length(CVtest[[j]]) > 1) {
         testFoldDist <-
-          .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
+          .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method, S_inv=S_inv)
       } else {
         testFoldDist <-
-          .alldistfun(t(train[CVtest[[j]],]), train[CVtrain[[j]],], method)
+          .alldistfun(t(train[CVtest[[j]],]), train[CVtrain[[j]],], method, S_inv=S_inv)
       }
 
       DItestFoldDist <- testFoldDist / trainDist_avrgmean
