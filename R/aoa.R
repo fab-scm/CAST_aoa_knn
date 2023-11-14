@@ -210,7 +210,8 @@ aoa <- function(newdata,
 
   # if not provided, compute train DI
   if(!inherits(trainDI, "trainDI")) {
-    message("No trainDI provided. Computing DI of training data...")
+    message("No trainDI provided.")
+    message("Computing DI of training data...")
     if(calc_LPD == TRUE) {
       message("Computing LPD of training data...")
     }

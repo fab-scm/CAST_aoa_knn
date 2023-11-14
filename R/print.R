@@ -37,19 +37,14 @@ show.trainDI = function(x, ...){
 print.aoa = function(x, ...){
   cat("DI:\n")
   print(x$DI)
-  
+
   if ("LPD" %in% names(x)) {
-    cat("LPD:\n") 
+    cat("LPD:\n")
     print(x$LPD)
   }
 
   cat("AOA:\n")
   print(x$AOA)
-
-  if ("LPD" %in% names(x)) {
-    cat("LPD:\n") 
-    print(x$LPD)
-  }
 
   cat("\n\nPredictor Weights:\n")
 
