@@ -228,7 +228,7 @@ get_preds_all <- function(model, trainDI){
   preds_all$LPD <- trainDI$trainLPD[!is.na(trainDI$trainLPD)]
   ## only take predictions from inside the AOA:
   preds_all <-  preds_all[preds_all$LPD>0,]
-  attr(preds_all, "maxLPD") <- trainDI$maxLPD
+  attr(preds_all, "avrgLPD") <- trainDI$avrgLPD
 
   return(preds_all)
 
