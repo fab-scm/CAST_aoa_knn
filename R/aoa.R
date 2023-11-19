@@ -140,7 +140,7 @@ aoa <- function(newdata,
                 method="L2",
                 useWeight=TRUE,
                 LPD = FALSE,
-                maxLPD = "opt") {
+                maxLPD = 1) {
 
   # handling of different raster formats
   as_stars <- FALSE
@@ -160,49 +160,63 @@ aoa <- function(newdata,
   }
 
   calc_LPD <- LPD
-  method_LPD <- maxLPD
   # validate maxLPD input
-  if (calc_LPD == TRUE) {
+  if (LPD == TRUE) {
     if (inherits(model, "train")) {
-      if (inherits(maxLPD, "character") && maxLPD == "max") {
-        maxLPD <- as.integer(length(model$trainingData[[1]]))
-      } else if (inherits(maxLPD, c("numeric", "integer"))) {
-        maxLPD <- as.integer(maxLPD)
-        if (maxLPD > length(model$trainingData[[1]])) {
+      if (is.numeric(maxLPD)) {
+        if (maxLPD <= 0) {
+          stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
+        }
+        if (maxLPD <= 1) {
+          maxLPD <- round(maxLPD * as.integer(length(model$trainingData[[1]])))
+        }
+        if (maxLPD > 1) {
+          if (maxLPD%%1 == 0) {
+            maxLPD <- as.integer(maxLPD)
+          } else if (maxLPD%%1 != 0) {
+            stop("maxLPD is ivalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
+          }
+        }
+        if (maxLPD > length(model$trainingData[[1]]) || maxLPD%%1 != 0) {
           stop(
             paste(
-              "maxLPD must be smaller or equal to the number of training samples.",
+              "maxLPD invalid. It must be smaller or equal to the number of training samples.",
               "Your model was calculated based on",
               as.character(length(model$trainingData[[1]])),
-              "samples."
+              "samples. You can also define a number between 0 and 1 to use a percentage of the number of training sample for the LPD calculation."
             )
           )
         }
-      } else if (inherits(maxLPD, "character") && maxLPD != "opt") {
-        stop(
-          "The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'."
-        )
+      } else {
+        stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
       }
     } else if (!is.null(train)) {
-      if (inherits(maxLPD, "character") &&
-          (maxLPD == "max" || maxLPD == "opt")) {
-        maxLPD <- length(train[[1]])
-      } else if (inherits(maxLPD, c("numeric", "integer"))) {
-        maxLPD <- as.integer(maxLPD)
-        if (maxLPD > length(train[[1]])) {
+      if (is.numeric(maxLPD)) {
+        if (maxLPD <= 0) {
+          stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
+        }
+        if (maxLPD <= 1) {
+          maxLPD <- round(maxLPD * as.integer(length(train[[1]])))
+        }
+        if (maxLPD > 1) {
+          if (maxLPD%%1 == 0) {
+            maxLPD <- as.integer(maxLPD)
+          } else if (maxLPD%%1 != 0) {
+            stop("maxLPD is ivalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
+          }
+        }
+        if (maxLPD > length(train[[1]]) || maxLPD%%1 != 0) {
           stop(
             paste(
-              "maxLPD must be smaller or equal to the number of training samples.",
+              "maxLPD invalid. It must be smaller or equal to the number of training samples.",
               "Your model was calculated based on",
               as.character(length(train[[1]])),
-              "samples."
+              "samples. You can also define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation."
             )
           )
         }
-      } else if (inherits(maxLPD, "character") && maxLPD != "opt") {
-        stop(
-          "The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'."
-        )
+      } else {
+        stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
       }
     }
   }
@@ -215,12 +229,12 @@ aoa <- function(newdata,
     if(calc_LPD == TRUE) {
       message("Computing LPD of training data...")
     }
-    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain, method, useWeight, LPD, maxLPD)
+    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain, method, useWeight, LPD)
   }
 
   if (calc_LPD == TRUE && sd(trainDI$weight) != 0) {
     # maxLPD <- trainDI$avrgLPD
-    maxLPD <- trainDI$maxLPD
+    trainDI$maxLPD <- maxLPD
   }
 
   message("Computing DI of newdata...")
@@ -334,12 +348,11 @@ aoa <- function(newdata,
     # set maxLPD to max of LPD_out if
     realMaxLPD <- max(LPD_out, na.rm = T)
     if (maxLPD > realMaxLPD) {
-      maxLPD <- realMaxLPD
-      trainDI$maxLPD <- realMaxLPD
-      if (inherits(method_LPD, c("numeric", "integer"))) {
-        message("Your specified maxLPD was bigger than the real maxLPD of you predictor data.")
+      if (inherits(maxLPD, c("numeric", "integer"))) {
+        message("Your specified maxLPD is bigger than the real maxLPD of you predictor data.")
       }
-      message(paste("maxLPD was set to", realMaxLPD))
+      message(paste("maxLPD is set to", realMaxLPD))
+      trainDI$maxLPD <- realMaxLPD
     }
   }
 

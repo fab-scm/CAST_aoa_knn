@@ -41,7 +41,6 @@
 #'  \item{threshold}{The DI threshold used for inside/outside AOA}
 #'  \item{trainLPD}{LPD of the training data}
 #'  \item{avrgLPD}{Average LPD of the training data}
-#'  \item{maxLPD}{Maximum neighbors considered for LPD calculation}
 #'
 #'
 #'
@@ -109,8 +108,7 @@ trainDI <- function(model = NA,
                     CVtrain = NULL,
                     method="L2",
                     useWeight = TRUE,
-                    LPD = FALSE,
-                    maxLPD = "opt"){
+                    LPD = FALSE){
 
   # get parameters if they are not provided in function call-----
   if(is.null(train)){train = aoa_get_train(model)}
@@ -277,10 +275,10 @@ trainDI <- function(model = NA,
     avrgLPD <- round(mean(trainLPD))
 
     # Optimal maxLPD ----
-    if (maxLPD == "opt") {
-      maxLPD <- stats::quantile(trainLPD, 0.25,na.rm=TRUE)
-      message(paste("maxLPD was set to", maxLPD))
-    }
+    # if (maxLPD == "opt") {
+    #   maxLPD <- stats::quantile(trainLPD, 0.25,na.rm=TRUE)
+    #   message(paste("maxLPD was set to", maxLPD))
+    # }
   }
 
 
@@ -303,7 +301,6 @@ trainDI <- function(model = NA,
   if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
     aoa_results$trainLPD <- trainLPD
     aoa_results$avrgLPD <- avrgLPD
-    aoa_results$maxLPD <- maxLPD
   }
 
   class(aoa_results) = "trainDI"
