@@ -91,7 +91,7 @@ plot.aoa = function(x, samplesize = 1000, ...){
   dfLPD = rbind(trainLPD, targetLPD)
 
 
-  ggplot(dfDI, aes_string(x = "DI", group = "what", fill = "what"))+
+  plotDI = ggplot(dfDI, aes_string(x = "DI", group = "what", fill = "what"))+
     geom_density(adjust=1.5, alpha=.4)+
     scale_fill_discrete(name = "Set")+
     geom_vline(aes(xintercept = x$parameters$threshold, linetype = "AOA_threshold"))+
@@ -99,13 +99,15 @@ plot.aoa = function(x, samplesize = 1000, ...){
     theme_bw()+
     theme(legend.position = "bottom")
 
-  ggplot(dfLPD, aes_string(x = "LPD", group = "what", fill = "what"))+
+  plotLPD = ggplot(dfLPD, aes_string(x = "LPD", group = "what", fill = "what"))+
     geom_density(adjust=1.5, alpha=0.4)+
     scale_fill_discrete(name = "Set")+
     geom_vline(aes(xintercept = x$parameters$maxLPD, linetype = "maxLPD"))+
     scale_linetype_manual(name = "", values = c(maxLPD = "dashed"))+
     theme_bw()+
     theme(legend.position = "bottom")
+
+  return(list(plotDI, plotLPD))
 }
 
 

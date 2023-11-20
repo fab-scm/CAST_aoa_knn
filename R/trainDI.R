@@ -242,12 +242,27 @@ trainDI <- function(model = NA,
   # note: previous versions of CAST derived the threshold this way:
   # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
-  # calculate avrgLPD and maxLPD
+  # calculate trainLPD, avrgLPD and maxLPD
   if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
     trainLPD <- c()
     for (j in  seq(CVtest)) {
-      testFoldDist <-
-        .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method)
+
+      if(method=="MD"){
+        if(dim(train[CVtrain[[j]],])[2] == 1){
+          S <- matrix(stats::var(train[CVtrain[[j]],]), 1, 1)
+        } else {
+          S <- stats::cov(train[CVtrain[[j]],])
+        }
+        S_inv <- MASS::ginv(S)
+      }
+
+      if (length(CVtest[[j]]) > 1) {
+        testFoldDist <-
+          .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method, S_inv=S_inv)
+      } else {
+        testFoldDist <-
+          .alldistfun(t(train[CVtest[[j]],]), train[CVtrain[[j]],], method, S_inv=S_inv)
+      }
 
       DItestFoldDist <- testFoldDist / trainDist_avrgmean
 
@@ -262,7 +277,6 @@ trainDI <- function(model = NA,
     avrgLPD <- round(mean(trainLPD))
 
     # Optimal maxLPD ----
-    # maxLPD <- stats::quantile(trainLPD, 0.25,na.rm=TRUE)
     if (maxLPD == "opt") {
       maxLPD <- stats::quantile(trainLPD, 0.25,na.rm=TRUE)
       message(paste("maxLPD was set to", maxLPD))

@@ -43,13 +43,13 @@ print.aoa = function(x, ...){
     print(x$LPD)
   }
 
-  cat("AOA:\n")
-  print(x$AOA)
-
   if ("LPD" %in% names(x)) {
-    cat("LPD:\n") 
+    cat("LPD:\n")
     print(x$LPD)
   }
+
+  cat("AOA:\n")
+  print(x$AOA)
 
   cat("\n\nPredictor Weights:\n")
 
