@@ -26,8 +26,8 @@
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
 #' @param LPD Logical. Indicates wheather the LPD should be calculated or not.
-#' @param maxLPD Integer or character. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Can be 'max' or 'opt' to consider all neighbors or the optimal value of neighbors derived from the CV folds.
-#' @details The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
+#' @param maxLPD numeric or integer. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.
+#' @details The Dissimilarity Index (DI), the Loacal Data Point Density (LPD) and the corresponding Area of Applicability (AOA) are calculated.
 #' If variables are factors, dummy variables are created prior to weighting and distance calculation.
 #'
 #' Interpretation of results: If a location is very similar to the properties
@@ -84,7 +84,7 @@
 #' plot(varImp(model,scale=FALSE))
 #'
 #' #...then calculate the AOA of the trained model for the study area:
-#' AOA <- aoa(studyArea,model)
+#' AOA <- aoa(studyArea, model, LPD = TRUE, maxLPD = 1)
 #' plot(AOA)
 #'
 #' ####
@@ -140,7 +140,7 @@ aoa <- function(newdata,
                 method="L2",
                 useWeight=TRUE,
                 LPD = FALSE,
-                maxLPD = "opt") {
+                maxLPD = 1) {
 
   # handling of different raster formats
   as_stars <- FALSE
@@ -160,50 +160,34 @@ aoa <- function(newdata,
   }
 
   calc_LPD <- LPD
-  method_LPD <- maxLPD
   # validate maxLPD input
-  if (calc_LPD == TRUE) {
-    if (inherits(model, "train")) {
-      if (inherits(maxLPD, "character") && maxLPD == "max") {
-        maxLPD <- as.integer(length(model$trainingData[[1]]))
-      } else if (inherits(maxLPD, c("numeric", "integer"))) {
-        maxLPD <- as.integer(maxLPD)
-        if (maxLPD > length(model$trainingData[[1]])) {
-          stop(
-            paste(
-              "maxLPD must be smaller or equal to the number of training samples.",
-              "Your model was calculated based on",
-              as.character(length(model$trainingData[[1]])),
-              "samples."
-            )
-          )
-        }
-      } else if (inherits(maxLPD, "character") && maxLPD != "opt") {
-        stop(
-          "The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'."
-        )
+  if (LPD == TRUE) {
+    if (is.numeric(maxLPD)) {
+      if (maxLPD <= 0) {
+        stop("maxLPD can not be negative or equal to 0. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
       }
-    } else if (!is.null(train)) {
-      if (inherits(maxLPD, "character") &&
-          (maxLPD == "max" || maxLPD == "opt")) {
-        maxLPD <- length(train[[1]])
-      } else if (inherits(maxLPD, c("numeric", "integer"))) {
-        maxLPD <- as.integer(maxLPD)
-        if (maxLPD > length(train[[1]])) {
-          stop(
-            paste(
-              "maxLPD must be smaller or equal to the number of training samples.",
-              "Your model was calculated based on",
-              as.character(length(train[[1]])),
-              "samples."
-            )
-          )
+      if (maxLPD <= 1) {
+        if (inherits(model, "train")) {
+          maxLPD <- round(maxLPD * as.integer(length(model$trainingData[[1]])))
+        } else if (!is.null(train)) {
+          maxLPD <- round(maxLPD * as.integer(length(train[[1]])))
         }
-      } else if (inherits(maxLPD, "character") && maxLPD != "opt") {
-        stop(
-          "The input for the parameter maxLPD is invalid. It must be an integer smaller than the size of samples used for model training or you can calculate the optimum and maximum of maxLPD by using 'opt' and 'max'."
-        )
+        if (maxLPD <= 1) {
+          stop("The percentage you provided for maxLPD is too small.")
+        }
       }
+      if (maxLPD > 1) {
+        if (maxLPD %% 1 == 0) {
+          maxLPD <- as.integer(maxLPD)
+        } else if (maxLPD %% 1 != 0) {
+          stop("If maxLPD is bigger than 0, it should be a whole number. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
+        }
+      }
+      if ((maxLPD > length(if (inherits(model, "train")) { model$trainingData[[1]] } else if (!is.null(train)) { train[[1]] })) || maxLPD %% 1 != 0) {
+        stop("maxLPD can not be bigger than the number of training samples. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
+      }
+    } else {
+      stop("maxLPD must be a number. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
     }
   }
 
@@ -215,12 +199,12 @@ aoa <- function(newdata,
     if(calc_LPD == TRUE) {
       message("Computing LPD of training data...")
     }
-    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain, method, useWeight, LPD, maxLPD)
+    trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain, method, useWeight, LPD)
   }
 
-  if (calc_LPD == TRUE && sd(trainDI$weight) != 0) {
+  if (calc_LPD == TRUE) {
     # maxLPD <- trainDI$avrgLPD
-    maxLPD <- trainDI$maxLPD
+    trainDI$maxLPD <- maxLPD
   }
 
   message("Computing DI of newdata...")
@@ -334,12 +318,11 @@ aoa <- function(newdata,
     # set maxLPD to max of LPD_out if
     realMaxLPD <- max(LPD_out, na.rm = T)
     if (maxLPD > realMaxLPD) {
-      maxLPD <- realMaxLPD
-      trainDI$maxLPD <- realMaxLPD
-      if (inherits(method_LPD, c("numeric", "integer"))) {
-        message("Your specified maxLPD was bigger than the real maxLPD of you predictor data.")
+      if (inherits(maxLPD, c("numeric", "integer"))) {
+        message("Your specified maxLPD is bigger than the real maxLPD of you predictor data.")
       }
-      message(paste("maxLPD was set to", realMaxLPD))
+      message(paste("maxLPD is set to", realMaxLPD))
+      trainDI$maxLPD <- realMaxLPD
     }
   }
 
