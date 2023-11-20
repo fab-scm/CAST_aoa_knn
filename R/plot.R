@@ -401,7 +401,7 @@ plot.geodist <- function(x, unit = "m", stat = "density", ...){
 #'
 
 
-plot.errorModel <- function(x, ...){
+plot.errorModelDI <- function(x, ...){
 
   performance = attr(x, "performance")[,c("DI", "metric")]
   performance$what = "cross-validation"
@@ -421,8 +421,30 @@ plot.errorModel <- function(x, ...){
 }
 
 
+#' @name plot
+#' @description Plot the LPD and errormetric from Cross-Validation with the modelled relationship
+#' @param x errorModelLPD, see \code{\link{LPDtoErrormetric}}
+#' @param ... other params
+#' @export
+#' @return a ggplot
+#'
 
 
+plot.errorModelLPD <- function(x, ...){
+
+  performance = attr(x, "performance")[,c("LPD", "metric")]
+  performance$what = "cross-validation"
+
+  model_line = data.frame(LPD = performance$LPD,
+                          metric = predict(x, performance),
+                          what = "model")
 
 
+  p = ggplot()+
+    geom_point(data = performance, mapping = aes_string(x = "LPD", y = "metric", shape = "what"))+
+    geom_line(data = model_line, mapping =  aes_string(x = "LPD", y = "metric", linetype = "what"), lwd = 1)+
+    theme(legend.title = element_blank(), legend.position = "bottom")
 
+  return(p)
+
+}
