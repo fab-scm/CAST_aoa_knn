@@ -202,7 +202,7 @@ aoa <- function(newdata,
     trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain, method, useWeight, LPD)
   }
 
-  if (calc_LPD == TRUE && sd(trainDI$weight) != 0) {
+  if (calc_LPD == TRUE) {
     # maxLPD <- trainDI$avrgLPD
     trainDI$maxLPD <- maxLPD
   }
