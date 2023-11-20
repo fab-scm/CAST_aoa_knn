@@ -22,8 +22,7 @@
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
-#' @param LPD Logical. Indicates wheather the L should be calculated or not.
-#' @param maxLPD Integer or character. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Can be 'max' or 'opt' to consider all neighbors or the optimal value of neighbors derived from the CV folds.
+#' @param LPD Logical. Indicates wheather the LPD should be calculated or not.
 #'
 #' @seealso \code{\link{aoa}}
 #' @importFrom graphics boxplot
@@ -240,7 +239,7 @@ trainDI <- function(model = NA,
   # note: previous versions of CAST derived the threshold this way:
   # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
-  # calculate trainLPD, avrgLPD and maxLPD
+  # calculate trainLPD and avrgLPD according to the CV folds
   if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
     trainLPD <- c()
     for (j in  seq(CVtest)) {
@@ -275,13 +274,12 @@ trainDI <- function(model = NA,
     avrgLPD <- round(mean(trainLPD))
   }
 
-  # calculate trainLPD, avrgLPD and maxLPD
+  # calculate trainLPD and avrgLPD with no CV folds (all training data points are considered)
   if (LPD == TRUE && is.null(CVtest) && is.null(CVtrain)) {
     trainLPD <- c()
     for (j in  seq(nrow(train))) {
 
       trainDistAll   <- .alldistfun(t(train[j,]), train,  method, S_inv=S_inv)[-1]
-
       DItrainDistAll <- trainDistAll / trainDist_avrgmean
 
       count <- sum(DItrainDistAll < thres)

@@ -59,14 +59,14 @@ LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
 
 
 
-#' Model expected error between Metric and DI
-#' @param preds_all data.frame: pred, obs, DI
+#' Model expected error between Metric and LPD
+#' @param preds_all data.frame: pred, obs, LPD
 #' @param model the model used to get the AOA
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the DI~performance relationship. Currently lm and scam are supported
+#' @param calib Character. Function to model the LPD~performance relationship. Currently lm, scam and nls are supported
 #' @param k Numeric. See mgcv::s
 #' @param m Numeric. See mgcv::s
-#' @return scam or lm
+#' @return scam, lm or nls model
 #'
 
 errorModel <- function(preds_all, model, window.size, calib, k, m){
