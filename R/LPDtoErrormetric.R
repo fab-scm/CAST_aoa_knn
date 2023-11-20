@@ -39,14 +39,14 @@ LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
 
   # get LPDs and Errormetrics OR calculate new ones from multiCV
   if(!multiCV){
-    preds_all <- get_preds_all(model, trainDI)
+    preds_all <- get_preds_all_LPD(model, trainDI)
   }
   if(multiCV){
-    preds_all <- multiCV(model, length.out, method, useWeight)
+    preds_all <- multiCV_LPD(model, length.out, method, useWeight)
   }
 
   # train model between DI and Errormetric
-  error_model = errorModel(preds_all, model, window.size, calib,  k, m)
+  error_model = errorModel_LPD(preds_all, model, window.size, calib,  k, m)
 
   # save AOA threshold and raw data
   attr(error_model, "maxLPD") <- attr(preds_all, "maxLPD")
@@ -69,7 +69,7 @@ LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
 #' @return scam, lm or nls model
 #'
 
-errorModel <- function(preds_all, model, window.size, calib, k, m){
+errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
 
   ## use performance metric from the model:
   rmse <- function(pred,obs){sqrt( mean((pred - obs)^2, na.rm = TRUE) )}
@@ -157,7 +157,7 @@ errorModel <- function(preds_all, model, window.size, calib, k, m){
 #'
 #'
 
-multiCV <- function(model, length.out, method, useWeight,...){
+multiCV_LPD <- function(model, length.out, method, useWeight,...){
 
   preds_all <- data.frame()
   train_predictors <- model$trainingData[,-which(names(model$trainingData)==".outcome")]
@@ -209,7 +209,7 @@ multiCV <- function(model, length.out, method, useWeight,...){
 #' @param trainDI, a trainDI
 #'
 
-get_preds_all <- function(model, trainDI){
+get_preds_all_LPD <- function(model, trainDI){
 
   if(is.null(model$pred)){
     stop("no cross-predictions can be retrieved from the model. Train with savePredictions=TRUE or provide calibration data")
