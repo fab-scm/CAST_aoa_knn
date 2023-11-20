@@ -26,8 +26,8 @@
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
 #' @param LPD Logical. Indicates wheather the LPD should be calculated or not.
-#' @param maxLPD Integer or character. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Can be 'max' or 'opt' to consider all neighbors or the optimal value of neighbors derived from the CV folds.
-#' @details The Dissimilarity Index (DI) and the corresponding Area of Applicability (AOA) are calculated.
+#' @param maxLPD numeric or integer. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.
+#' @details The Dissimilarity Index (DI), the Loacal Data Point Density (LPD) and the corresponding Area of Applicability (AOA) are calculated.
 #' If variables are factors, dummy variables are created prior to weighting and distance calculation.
 #'
 #' Interpretation of results: If a location is very similar to the properties
@@ -84,7 +84,7 @@
 #' plot(varImp(model,scale=FALSE))
 #'
 #' #...then calculate the AOA of the trained model for the study area:
-#' AOA <- aoa(studyArea,model)
+#' AOA <- aoa(studyArea, model, LPD = TRUE, maxLPD = 1)
 #' plot(AOA)
 #'
 #' ####
@@ -162,62 +162,32 @@ aoa <- function(newdata,
   calc_LPD <- LPD
   # validate maxLPD input
   if (LPD == TRUE) {
-    if (inherits(model, "train")) {
-      if (is.numeric(maxLPD)) {
-        if (maxLPD <= 0) {
-          stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
-        }
-        if (maxLPD <= 1) {
-          maxLPD <- round(maxLPD * as.integer(length(model$trainingData[[1]])))
-        }
-        if (maxLPD > 1) {
-          if (maxLPD%%1 == 0) {
-            maxLPD <- as.integer(maxLPD)
-          } else if (maxLPD%%1 != 0) {
-            stop("maxLPD is ivalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
-          }
-        }
-        if (maxLPD > length(model$trainingData[[1]]) || maxLPD%%1 != 0) {
-          stop(
-            paste(
-              "maxLPD invalid. It must be smaller or equal to the number of training samples.",
-              "Your model was calculated based on",
-              as.character(length(model$trainingData[[1]])),
-              "samples. You can also define a number between 0 and 1 to use a percentage of the number of training sample for the LPD calculation."
-            )
-          )
-        }
-      } else {
-        stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
+    if (is.numeric(maxLPD)) {
+      if (maxLPD <= 0) {
+        stop("maxLPD can not be negative or equal to 0. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
       }
-    } else if (!is.null(train)) {
-      if (is.numeric(maxLPD)) {
-        if (maxLPD <= 0) {
-          stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
-        }
-        if (maxLPD <= 1) {
+      if (maxLPD <= 1) {
+        if (inherits(model, "train")) {
+          maxLPD <- round(maxLPD * as.integer(length(model$trainingData[[1]])))
+        } else if (!is.null(train)) {
           maxLPD <- round(maxLPD * as.integer(length(train[[1]])))
         }
-        if (maxLPD > 1) {
-          if (maxLPD%%1 == 0) {
-            maxLPD <- as.integer(maxLPD)
-          } else if (maxLPD%%1 != 0) {
-            stop("maxLPD is ivalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
-          }
+        if (maxLPD <= 1) {
+          stop("The percentage you provided for maxLPD is too small.")
         }
-        if (maxLPD > length(train[[1]]) || maxLPD%%1 != 0) {
-          stop(
-            paste(
-              "maxLPD invalid. It must be smaller or equal to the number of training samples.",
-              "Your model was calculated based on",
-              as.character(length(train[[1]])),
-              "samples. You can also define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation."
-            )
-          )
-        }
-      } else {
-        stop("maxLPD is invalid. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or an integer larger than 1 and smaller than the number of training samples.")
       }
+      if (maxLPD > 1) {
+        if (maxLPD %% 1 == 0) {
+          maxLPD <- as.integer(maxLPD)
+        } else if (maxLPD %% 1 != 0) {
+          stop("If maxLPD is bigger than 0, it should be a whole number. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
+        }
+      }
+      if ((maxLPD > length(if (inherits(model, "train")) { model$trainingData[[1]] } else if (!is.null(train)) { train[[1]] })) || maxLPD %% 1 != 0) {
+        stop("maxLPD can not be bigger than the number of training samples. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
+      }
+    } else {
+      stop("maxLPD must be a number. Either define a number between 0 and 1 to use a percentage of the number of training samples for the LPD calculation or a whole number larger than 1 and smaller than the number of training samples.")
     }
   }
 
