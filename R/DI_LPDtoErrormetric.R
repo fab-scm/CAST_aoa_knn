@@ -1,10 +1,10 @@
-#' Model the relationship between the LPD and the prediction error
-#' @description Performance metrics are calculated for moving windows of LPD values of cross-validated training data
+#' Model the relationship between the DI and LPD and the prediction error
+#' @description Performance metrics are calculated for moving windows of DI values of cross-validated training data
 #' @param model the model used to get the AOA
 #' @param trainDI the result of \code{\link{trainDI}} or aoa object \code{\link{aoa}}
 #' @param multiCV Logical. Re-run model fitting and validation with different CV strategies. See details.
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the LPD~performance relationship. Currently lm, scam, nls are supported
+#' @param calib Character. Function to model the DI~performance relationship. Currently lm and scam are supported
 #' @param length.out Numeric. Only used if multiCV=TRUE. Number of cross-validation folds. See details.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
@@ -21,12 +21,13 @@
 #' Estimating the area of applicability of spatial prediction models.
 #' \doi{10.1111/2041-210X.13650}
 #' @seealso \code{\link{aoa}}
-#' @example inst/examples/ex_LPDtoErrormetric.R
+#' @example inst/examples/ex_DItoErrormetric.R
 #'
 #'
 #' @export
+#'
 
-LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
+DI_LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
                             length.out = 10, window.size = 5, calib = "scam",
                             method= "L2", useWeight=TRUE,
                             k = 6, m = 2){
@@ -37,20 +38,20 @@ LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
   }
 
 
-  # get LPDs and Errormetrics OR calculate new ones from multiCV
+  # get DIs and Errormetrics OR calculate new ones from multiCV
   if(!multiCV){
-    preds_all <- get_preds_all_LPD(model, trainDI)
+    preds_all <- get_preds_all_DI_LPD(model, trainDI)
   }
   if(multiCV){
-    preds_all <- multiCV_LPD(model, length.out, method, useWeight)
+    preds_all <- multiCV_DI_LPD(model, length.out, method, useWeight)
   }
 
   # train model between DI and Errormetric
-  error_model = errorModel_LPD(preds_all, model, window.size, calib,  k, m)
+  error_model = errorModel_DI_LPD(preds_all, model, window.size, calib,  k, m)
 
   # save AOA threshold and raw data
-  attr(error_model, "maxLPD") <- attr(preds_all, "maxLPD")
-  class(error_model) <- c("errorModelLPD", class(error_model))
+  attr(error_model, "AOA_threshold") <- attr(preds_all, "AOA_threshold")
+  class(error_model) <- c("errorModelDI_LPD", class(error_model))
   return(error_model)
 }
 
@@ -59,17 +60,17 @@ LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
 
 
 
-#' Model expected error between Metric and LPD
-#' @param preds_all data.frame: pred, obs, LPD
+#' Model expected error between Metric and DI
+#' @param preds_all data.frame: pred, obs, DI
 #' @param model the model used to get the AOA
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the LPD~performance relationship. Currently lm, scam and nls are supported
+#' @param calib Character. Function to model the DI~performance relationship. Currently lm and scam are supported
 #' @param k Numeric. See mgcv::s
 #' @param m Numeric. See mgcv::s
-#' @return scam, lm or nls model
+#' @return scam or lm
 #'
 
-errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
+errorModel_DI_LPD <- function(preds_all, model, window.size, calib, k, m){
 
   ## use performance metric from the model:
   rmse <- function(pred,obs){sqrt( mean((pred - obs)^2, na.rm = TRUE) )}
@@ -106,19 +107,19 @@ errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
   }
 
 
-  # order data according to LPD:
-  performance <- preds_all[order(preds_all$LPD),]
+  # order data according to DI:
+  performance <- preds_all[order(preds_all$DI),]
   # calculate performance for moving window:
   performance$metric <- zoo::rollapply(performance[,1:2], window.size,
                                        FUN=function(x){evalfunc(x[,1],x[,2])},
                                        by.column=F,align = "center",fill=NA)
-  performance$ll <- data.table::shift(performance$LPD,window.size/2)
-  performance$ul <- data.table::shift(performance$LPD,-round(window.size/2),0)
+  performance$ll <- data.table::shift(performance$DI,window.size/2)
+  performance$ul <- data.table::shift(performance$DI,-round(window.size/2),0)
   performance <- performance[!is.na(performance$metric),]
 
   ### Estimate Error:
   if(calib=="lm"){
-    errormodel <- lm(metric ~ LPD, data = performance)
+    errormodel <- lm(metric ~ DI+LPD, data = performance)
   }
   if(calib=="scam"){
     if (!requireNamespace("scam", quietly = TRUE)) {
@@ -131,13 +132,9 @@ errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
       bs="mpi" #e.g. RMSE
     }
 
-    errormodel <- scam::scam(metric~s(LPD, k=k, bs=bs, m=m),
+    errormodel <- scam::scam(metric~s(DI, k=k, bs=bs, m=m)+s(LPD, k=k, bs=bs, m=m),
                              data=performance,
                              family=stats::gaussian(link="identity"))
-  }
-  if(calib=="exp"){
-    errormodel <- nls(metric ~ a*exp(LPD*b), data = performance,
-                      start = list(a = 1, b = 0))
   }
   attr(errormodel, "performance") = performance
 
@@ -157,7 +154,7 @@ errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
 #'
 #'
 
-multiCV_LPD <- function(model, length.out, method, useWeight,...){
+multiCV_DI <- function(model, length.out, method, useWeight,...){
 
   preds_all <- data.frame()
   train_predictors <- model$trainingData[,-which(names(model$trainingData)==".outcome")]
@@ -184,20 +181,20 @@ multiCV_LPD <- function(model, length.out, method, useWeight,...){
 
     # retrain model and calculate AOA
     model_new <- do.call(caret::train,mcall)
-    trainLPD_new <- trainLPD(model_new, method=method, useWeight=useWeight)
+    trainDI_new <- trainDI(model_new, method=method, useWeight=useWeight)
 
 
     # get cross-validated predictions, order them  and use only those located in the AOA
     preds <- model_new$pred
     preds <- preds[order(preds$rowIndex),c("pred","obs")]
-    preds_dat_tmp <- data.frame(preds,"LPD"=trainDI_new$trainLPD)
-    preds_dat_tmp <-  preds_dat_tmp[preds_dat_tmp$LPD > 0,]
+    preds_dat_tmp <- data.frame(preds,"DI"=trainDI_new$trainDI)
+    preds_dat_tmp <-  preds_dat_tmp[preds_dat_tmp$DI <= trainDI_new$threshold,]
     preds_all <- rbind(preds_all,preds_dat_tmp)
   }
 
-  attr(preds_all, "Avrg. trainLPD") <- trainDI_new$threshold
-  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", trainLPD_new$avrgLPD,
-                 "\nAvrg LPD is stored in the attributes, access with attr(error_model, 'Avrg LPD').",
+  attr(preds_all, "AOA_threshold") <- trainDI_new$threshold
+  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", round(trainDI_new$threshold, 5),
+                 "\nThreshold is stored in the attributes, access with attr(error_model, 'AOA_threshold').",
                  "\nPlease refere to examples and details for further information."))
   return(preds_all)
 
@@ -209,7 +206,7 @@ multiCV_LPD <- function(model, length.out, method, useWeight,...){
 #' @param trainDI, a trainDI
 #'
 
-get_preds_all_LPD <- function(model, trainDI){
+get_preds_all_DI_LPD <- function(model, trainDI){
 
   if(is.null(model$pred)){
     stop("no cross-predictions can be retrieved from the model. Train with savePredictions=TRUE or provide calibration data")
@@ -224,12 +221,19 @@ get_preds_all_LPD <- function(model, trainDI){
   preds_all <- preds_all[order(preds_all$rowIndex),c("pred","obs")]
 
 
-  ## add LPD from trainLPD
+  ## add DI from trainDI and LPD from trainLPD
+  preds_all$DI <- trainDI$trainDI[!is.na(trainDI$trainDI)]
   preds_all$LPD <- trainDI$trainLPD[!is.na(trainDI$trainLPD)]
   ## only take predictions from inside the AOA:
-  preds_all <-  preds_all[preds_all$LPD>0,]
+  preds_all <-  preds_all[preds_all$DI<=trainDI$threshold,]
+  # preds_all <-  preds_all[preds_all$LPD>0,]
+  attr(preds_all, "AOA_threshold") <- trainDI$threshold
   attr(preds_all, "avrgLPD") <- trainDI$avrgLPD
+
+  ## add LPD from trainLPD
+  ## only take predictions from inside the AOA:
 
   return(preds_all)
 
 }
+
