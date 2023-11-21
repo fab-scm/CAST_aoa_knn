@@ -240,57 +240,39 @@ trainDI <- function(model = NA,
   # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
   # calculate trainLPD and avrgLPD according to the CV folds
-  if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
-    trainLPD <- c()
-    for (j in  seq(CVtest)) {
-
-      if(method=="MD"){
-        if(dim(train[CVtrain[[j]],])[2] == 1){
-          S <- matrix(stats::var(train[CVtrain[[j]],]), 1, 1)
-        } else {
-          S <- stats::cov(train[CVtrain[[j]],])
-        }
-        S_inv <- MASS::ginv(S)
-      }
-
-      if (length(CVtest[[j]]) > 1) {
-        testFoldDist <-
-          .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method, S_inv=S_inv)
-      } else {
-        testFoldDist <-
-          .alldistfun(t(train[CVtest[[j]],]), train[CVtrain[[j]],], method, S_inv=S_inv)
-      }
-
-      DItestFoldDist <- testFoldDist / trainDist_avrgmean
-
-      count_list <-
-        apply(DItestFoldDist, 1, function(row)
-          sum(row < thres))
-
-      trainLPD <- append(trainLPD, count_list)
-    }
-
-    # Average LPD in trainData
-    avrgLPD <- round(mean(trainLPD))
-  }
-
-  # calculate trainLPD and avrgLPD with no CV folds (all training data points are considered)
-  if (LPD == TRUE && is.null(CVtest) && is.null(CVtrain)) {
+  if (LPD == TRUE) {
     trainLPD <- c()
     for (j in  seq(nrow(train))) {
 
-      trainDistAll   <- .alldistfun(t(train[j,]), train,  method, S_inv=S_inv)[-1]
-      DItrainDistAll <- trainDistAll / trainDist_avrgmean
+      # calculate  distance to other training data:
+      trainDist      <- .alldistfun(t(matrix(train[j,])), train, method, sorted = FALSE, S_inv)
+      trainDist[j]   <- NA
+      DItrainDist <- trainDist/trainDist_avrgmean
 
-      count <- sum(DItrainDistAll < thres)
+      # mask of any data that are not used for training for the respective data point (using CV)
+      whichfold <- NA
+      if(!is.null(CVtrain)&!is.null(CVtest)){
+        whichfold <-  as.numeric(which(lapply(CVtest,function(x){any(x==j)})==TRUE)) # index of the fold where i is held back
+        if(length(whichfold)!=0){ # in case that a data point is never used for testing
+          DItrainDist[!seq(nrow(train))%in%CVtrain[[whichfold]]] <- NA # everything that is not in the training data for i is ignored
+        }
+        if(length(whichfold)==0){#in case that a data point is never used for testing, the distances for that point are ignored
+          DItrainDist <- NA
+        }
+      }
 
-      trainLPD <- append(trainLPD, count)
+      #######################################
+
+      if (length(whichfold)==0){
+        trainLPD <- append(trainLPD, NA)
+      } else {
+        trainLPD <- append(trainLPD, sum(DItrainDist[,1] < thres, na.rm = TRUE))
+      }
     }
 
     # Average LPD in trainData
     avrgLPD <- round(mean(trainLPD))
   }
-
 
 
   # Return: trainDI Object -------
