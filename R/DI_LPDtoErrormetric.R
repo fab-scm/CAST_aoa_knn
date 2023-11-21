@@ -60,8 +60,8 @@ DI_LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
 
 
 
-#' Model expected error between Metric and DI
-#' @param preds_all data.frame: pred, obs, DI
+#' Model expected error between Metric and DI and LPD
+#' @param preds_all data.frame: pred, obs, DI, LPD
 #' @param model the model used to get the AOA
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
 #' @param calib Character. Function to model the DI~performance relationship. Currently lm and scam are supported
@@ -154,7 +154,7 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, k, m){
 #'
 #'
 
-multiCV_DI <- function(model, length.out, method, useWeight,...){
+multiCV_DI_LPD <- function(model, length.out, method, useWeight,...){
 
   preds_all <- data.frame()
   train_predictors <- model$trainingData[,-which(names(model$trainingData)==".outcome")]
@@ -229,9 +229,6 @@ get_preds_all_DI_LPD <- function(model, trainDI){
   # preds_all <-  preds_all[preds_all$LPD>0,]
   attr(preds_all, "AOA_threshold") <- trainDI$threshold
   attr(preds_all, "avrgLPD") <- trainDI$avrgLPD
-
-  ## add LPD from trainLPD
-  ## only take predictions from inside the AOA:
 
   return(preds_all)
 
