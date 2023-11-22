@@ -10,6 +10,7 @@
 \alias{plot.geodist}
 \alias{plot.errorModelDI}
 \alias{plot.errorModelLPD}
+\alias{plot.errorModelDI_LPD}
 \title{Plot CAST classes}
 \usage{
 \method{plot}{trainDI}(x, ...)
@@ -37,9 +38,11 @@
 \method{plot}{errorModelDI}(x, ...)
 
 \method{plot}{errorModelLPD}(x, ...)
+
+\method{plot}{errorModelDI_LPD}(x, ...)
 }
 \arguments{
-\item{x}{errorModelLPD, see \code{\link{LPDtoErrormetric}}}
+\item{x}{errorModelDI_LPD, see \code{\link{DI_LPDtoErrormetric}}}
 
 \item{...}{other params}
 
@@ -69,6 +72,8 @@ a ggplot
 a ggplot
 
 a ggplot
+
+a plotly
 }
 \description{
 Generic plot function for CAST Classes
@@ -88,6 +93,8 @@ The plot can be used to check the suitability of a chosen CV method to be repres
 Plot the DI and errormetric from Cross-Validation with the modelled relationship
 
 Plot the LPD and errormetric from Cross-Validation with the modelled relationship
+
+Plot the DI and LPD and errormetric from Cross-Validation with the modelled relationship
 }
 \examples{
 \dontrun{

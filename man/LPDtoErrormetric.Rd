@@ -66,7 +66,7 @@ the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full
   model <- caret::train(splotdata[,6:16], splotdata$Species_richness, ntree = 10,
                         trControl = trainControl(method = "cv", savePredictions = TRUE))
 
-  AOA <- aoa(predictors, model, LPD = TRUE)
+  AOA <- aoa(predictors, model, LPD = TRUE, maxLPD = 1)
 
   errormodel <- LPDtoErrormetric(model, AOA)
   plot(errormodel)
@@ -83,7 +83,7 @@ the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full
   plot(expected_error)
 
   # mask AOA based on new threshold from multiCV
-  mask_aoa = terra::mask(expected_error, AOA$LPD > attr(errormodel, 'AOA_threshold'), maskvalues = 1)
+  mask_aoa = terra::mask(expected_error, AOA$DI > attr(errormodel, 'AOA_threshold'), maskvalues = 1)
   plot(mask_aoa)
 
 

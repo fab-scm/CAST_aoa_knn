@@ -21,7 +21,7 @@
 #' Estimating the area of applicability of spatial prediction models.
 #' \doi{10.1111/2041-210X.13650}
 #' @seealso \code{\link{aoa}}
-#' @example inst/examples/ex_DItoErrormetric.R
+#' @example inst/examples/ex_DI_LPDtoErrormetric.R
 #'
 #'
 #' @export
@@ -106,16 +106,32 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, k, m){
     eval(parse(text=paste0(tolower(model$metric),"(pred,obs)")))
   }
 
-
+  # performance$metric <- abs(performance$pred - performance$obs)
   # order data according to DI:
-  performance <- preds_all[order(preds_all$DI),]
+  performanceDI <- preds_all[order(preds_all$DI),]
   # calculate performance for moving window:
-  performance$metric <- zoo::rollapply(performance[,1:2], window.size,
+  performanceDI$metric <- zoo::rollapply(performanceDI[,1:2], window.size,
                                        FUN=function(x){evalfunc(x[,1],x[,2])},
                                        by.column=F,align = "center",fill=NA)
-  performance$ll <- data.table::shift(performance$DI,window.size/2)
-  performance$ul <- data.table::shift(performance$DI,-round(window.size/2),0)
-  performance <- performance[!is.na(performance$metric),]
+  performanceDI$ll <- data.table::shift(performanceDI$DI,window.size/2)
+  performanceDI$ul <- data.table::shift(performanceDI$DI,-round(window.size/2),0)
+  performanceDI <- performanceDI[!is.na(performanceDI$metric),]
+  performanceDI$ID <- as.numeric(rownames(performanceDI))
+
+  # order data according to LPD:
+  performanceLPD <- preds_all[order(preds_all$LPD),]
+  # calculate performance for moving window:
+  performanceLPD$metric <- zoo::rollapply(performanceLPD[,1:2], window.size,
+                                         FUN=function(x){evalfunc(x[,1],x[,2])},
+                                         by.column=F,align = "center",fill=NA)
+  performanceLPD$ll <- data.table::shift(performanceLPD$LPD,window.size/2)
+  performanceLPD$ul <- data.table::shift(performanceLPD$LPD,-round(window.size/2),0)
+  performanceLPD <- performanceLPD[!is.na(performanceLPD$metric),]
+  performanceLPD$ID <- as.numeric(rownames(performanceLPD))
+
+  performance <- merge(performanceDI, performanceLPD, by = c("ID", "DI", "LPD", "pred", "obs"))
+  performance$metric <- (performance$metric.x + performance$metric.y) / 2
+  names(performance) <- c("ID", "DI", "LPD", "pred", "obs", "metric.DI", "ll.DI", "ul.DI", "metric.LPD", "ll.LPD", "ul.LPD", "metric")
 
   ### Estimate Error:
   if(calib=="lm"){
@@ -136,6 +152,20 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, k, m){
                              data=performance,
                              family=stats::gaussian(link="identity"))
   }
+  if(calib=="nls"){
+    errormodel <- nls(metric ~ DI + a*exp(b*LPD), data = performance, start = list(a = 1, b = 0))
+  }
+  if (calib =="gam") {
+    errormodel <- mgcv::gam(metric ~ s(DI)+s(LPD), data=performance)
+  }
+  if (calib=="caret"){
+    errormodel <-train(performance[,c("DI", "LPD")],
+                    performance$metric,
+                    method="rf",
+                    importance=TRUE,
+                    trControl = trainControl(method="cv",savePredictions = TRUE))
+  }
+
   attr(errormodel, "performance") = performance
 
   return(errormodel)
@@ -187,13 +217,14 @@ multiCV_DI_LPD <- function(model, length.out, method, useWeight,...){
     # get cross-validated predictions, order them  and use only those located in the AOA
     preds <- model_new$pred
     preds <- preds[order(preds$rowIndex),c("pred","obs")]
-    preds_dat_tmp <- data.frame(preds,"DI"=trainDI_new$trainDI)
+    preds_dat_tmp <- data.frame(preds,"DI"=trainDI_new$trainDI, "LPD"=trainDI_new$trainLPD)
     preds_dat_tmp <-  preds_dat_tmp[preds_dat_tmp$DI <= trainDI_new$threshold,]
     preds_all <- rbind(preds_all,preds_dat_tmp)
   }
 
   attr(preds_all, "AOA_threshold") <- trainDI_new$threshold
-  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", round(trainDI_new$threshold, 5),
+  attr(preds_all, "avrgLPD") <- trainDI_new$avrgLPD
+  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", round(trainDI_new$threshold, 5), "and new average LPD of", trainDI_new$avrgLPD, 
                  "\nThreshold is stored in the attributes, access with attr(error_model, 'AOA_threshold').",
                  "\nPlease refere to examples and details for further information."))
   return(preds_all)

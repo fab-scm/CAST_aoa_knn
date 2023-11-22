@@ -196,7 +196,7 @@ multiCV_LPD <- function(model, length.out, method, useWeight,...){
   }
 
   attr(preds_all, "Avrg. trainLPD") <- trainDI_new$threshold
-  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", trainLPD_new$avrgLPD,
+  message(paste0("Note: multiCV=TRUE calculated new average LPD of ", trainLPD_new$avrgLPD,
                  "\nAvrg LPD is stored in the attributes, access with attr(error_model, 'Avrg LPD').",
                  "\nPlease refere to examples and details for further information."))
   return(preds_all)

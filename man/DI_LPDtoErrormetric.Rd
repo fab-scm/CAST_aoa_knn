@@ -66,20 +66,20 @@ the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full
   model <- caret::train(splotdata[,6:16], splotdata$Species_richness, ntree = 10,
                         trControl = trainControl(method = "cv", savePredictions = TRUE))
 
-  AOA <- aoa(predictors, model)
+  AOA <- aoa(predictors, model, LPD = TRUE, maxLPD = 1)
 
-  errormodel <- DItoErrormetric(model, AOA)
+  errormodel <- DI_LPDtoErrormetric(model, AOA)
   plot(errormodel)
 
-  expected_error = terra::predict(AOA$DI, errormodel)
+  expected_error = terra::predict(rast(list(AOA$DI, AOA$LPD)), errormodel)
   plot(expected_error)
 
 
   # with multiCV = TRUE
-  errormodel = DItoErrormetric(model, AOA, multiCV = TRUE, length.out = 3)
+  errormodel = DI_LPDtoErrormetric(model, AOA, multiCV = TRUE, length.out = 3)
   plot(errormodel)
 
-  expected_error = terra::predict(AOA$DI, errormodel)
+  expected_error = terra::predict(rast(list(AOA$DI, AOA$LPD)), errormodel)
   plot(expected_error)
 
   # mask AOA based on new threshold from multiCV
@@ -90,7 +90,6 @@ the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full
 
 
 }
-
 }
 \references{
 Meyer, H., Pebesma, E. (2021): Predicting into unknown space?
