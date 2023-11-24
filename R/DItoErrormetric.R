@@ -137,6 +137,7 @@ errorModel_DI <- function(preds_all, model, window.size, calib, k, m){
                              data=performance,
                              family=stats::gaussian(link="identity"))
   }
+
   attr(errormodel, "performance") = performance
 
   return(errormodel)

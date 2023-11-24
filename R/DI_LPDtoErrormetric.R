@@ -4,7 +4,7 @@
 #' @param trainDI the result of \code{\link{trainDI}} or aoa object \code{\link{aoa}}
 #' @param multiCV Logical. Re-run model fitting and validation with different CV strategies. See details.
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the DI~performance relationship. Currently lm and scam are supported
+#' @param calib Character. Function to model the DI+LPD~performance relationship. Currently lm and scam are supported
 #' @param length.out Numeric. Only used if multiCV=TRUE. Number of cross-validation folds. See details.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
@@ -30,7 +30,7 @@
 DI_LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
                             length.out = 10, window.size = 5, calib = "scam",
                             method= "L2", useWeight=TRUE,
-                            k = 6, m = 2){
+                            kDI = 6, mDI = 2, kLPD = 4, mLPD = 2){
 
 
   if(inherits(trainDI,"aoa")){
@@ -47,7 +47,7 @@ DI_LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
   }
 
   # train model between DI and Errormetric
-  error_model = errorModel_DI_LPD(preds_all, model, window.size, calib,  k, m)
+  error_model = errorModel_DI_LPD(preds_all, model, window.size, calib,  kDI, mDI, kLPD, mLPD)
 
   # save AOA threshold and raw data
   attr(error_model, "AOA_threshold") <- attr(preds_all, "AOA_threshold")
@@ -70,7 +70,7 @@ DI_LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
 #' @return scam or lm
 #'
 
-errorModel_DI_LPD <- function(preds_all, model, window.size, calib, k, m){
+errorModel_DI_LPD <- function(preds_all, model, window.size, calib, kDI, mDI, kLPD, mLPD){
 
   ## use performance metric from the model:
   rmse <- function(pred,obs){sqrt( mean((pred - obs)^2, na.rm = TRUE) )}
@@ -135,7 +135,7 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, k, m){
 
   ### Estimate Error:
   if(calib=="lm"){
-    errormodel <- lm(metric ~ DI+LPD, data = performance)
+    errormodel <- lm(metric ~ DI+ LPD, data = performance)
   }
   if(calib=="scam"){
     if (!requireNamespace("scam", quietly = TRUE)) {
@@ -143,27 +143,23 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, k, m){
            call. = FALSE)
     }
     if (model$maximize){ # e.g. accuracy, kappa, r2
-      bs="mpd"
+      bsDI="mpd"
     }else{
-      bs="mpi" #e.g. RMSE
+      bsDI="mpi" #e.g. RMSE
     }
 
-    errormodel <- scam::scam(metric~s(DI, k=k, bs=bs, m=m)+s(LPD, k=k, bs=bs, m=m),
+    if (model$maximize){ # e.g. accuracy, kappa, r2
+      bsLPD="mpi"
+    }else{
+      bsLPD="mpd" #e.g. RMSE
+    }
+
+    errormodel <- scam::scam(metric~s(DI, k=kDI, bs=bsDI, m=mDI)+s(LPD, k=kLPD, bs=bsLPD, m=mLPD),
                              data=performance,
                              family=stats::gaussian(link="identity"))
   }
-  if(calib=="nls"){
-    errormodel <- nls(metric ~ DI + a*exp(b*LPD), data = performance, start = list(a = 1, b = 0))
-  }
-  if (calib =="gam") {
-    errormodel <- mgcv::gam(metric ~ s(DI)+s(LPD), data=performance)
-  }
-  if (calib=="caret"){
-    errormodel <-train(performance[,c("DI", "LPD")],
-                    performance$metric,
-                    method="rf",
-                    importance=TRUE,
-                    trControl = trainControl(method="cv",savePredictions = TRUE))
+  if(calib=="exp"){
+    errormodel <- lm(metric ~ DI + log(LPD), data = performance)
   }
 
   attr(errormodel, "performance") = performance
@@ -224,7 +220,7 @@ multiCV_DI_LPD <- function(model, length.out, method, useWeight,...){
 
   attr(preds_all, "AOA_threshold") <- trainDI_new$threshold
   attr(preds_all, "avrgLPD") <- trainDI_new$avrgLPD
-  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", round(trainDI_new$threshold, 5), "and new average LPD of", trainDI_new$avrgLPD, 
+  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", round(trainDI_new$threshold, 5), "and new average LPD of", trainDI_new$avrgLPD,
                  "\nThreshold is stored in the attributes, access with attr(error_model, 'AOA_threshold').",
                  "\nPlease refere to examples and details for further information."))
   return(preds_all)
