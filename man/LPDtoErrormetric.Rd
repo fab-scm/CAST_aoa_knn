@@ -13,7 +13,7 @@ LPDtoErrormetric(
   calib = "scam",
   method = "L2",
   useWeight = TRUE,
-  k = 6,
+  k = 4,
   m = 2
 )
 }
@@ -28,7 +28,7 @@ LPDtoErrormetric(
 
 \item{window.size}{Numeric. Size of the moving window. See \code{\link{rollapply}}.}
 
-\item{calib}{Character. Function to model the LPD~performance relationship. Currently lm, scam, nls are supported}
+\item{calib}{Character. Function to model the LPD~performance relationship. Currently lm and scam are supported}
 
 \item{method}{Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation}
 

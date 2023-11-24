@@ -4,7 +4,7 @@
 \alias{errorModel_DI_LPD}
 \title{Model expected error between Metric and DI and LPD}
 \usage{
-errorModel_DI_LPD(preds_all, model, window.size, calib, k, m)
+errorModel_DI_LPD(preds_all, model, window.size, calib, kDI, mDI, kLPD, mLPD)
 }
 \arguments{
 \item{preds_all}{data.frame: pred, obs, DI, LPD}

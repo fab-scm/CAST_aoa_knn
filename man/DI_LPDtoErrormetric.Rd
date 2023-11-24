@@ -13,8 +13,10 @@ DI_LPDtoErrormetric(
   calib = "scam",
   method = "L2",
   useWeight = TRUE,
-  k = 6,
-  m = 2
+  kDI = 6,
+  mDI = 2,
+  kLPD = 4,
+  mLPD = 2
 )
 }
 \arguments{
@@ -28,7 +30,7 @@ DI_LPDtoErrormetric(
 
 \item{window.size}{Numeric. Size of the moving window. See \code{\link{rollapply}}.}
 
-\item{calib}{Character. Function to model the DI~performance relationship. Currently lm and scam are supported}
+\item{calib}{Character. Function to model the DI+LPD~performance relationship. Currently lm and scam are supported}
 
 \item{method}{Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation}
 
