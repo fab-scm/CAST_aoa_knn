@@ -128,6 +128,8 @@
 #' @export aoa
 #' @aliases aoa
 
+
+
 aoa <- function(newdata,
                 model=NA,
                 trainDI = NA,
