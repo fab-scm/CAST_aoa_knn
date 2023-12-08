@@ -128,7 +128,6 @@
 #' @export aoa
 #' @aliases aoa
 
-
 aoa <- function(newdata,
                 model=NA,
                 trainDI = NA,
@@ -195,10 +194,6 @@ aoa <- function(newdata,
   # if not provided, compute train DI
   if(!inherits(trainDI, "trainDI")) {
     message("No trainDI provided.")
-    message("Computing DI of training data...")
-    if(calc_LPD == TRUE) {
-      message("Computing LPD of training data...")
-    }
     trainDI <- trainDI(model, train, variables, weight, CVtest, CVtrain, method, useWeight, LPD)
   }
 
@@ -206,8 +201,6 @@ aoa <- function(newdata,
     # maxLPD <- trainDI$avrgLPD
     trainDI$maxLPD <- maxLPD
   }
-
-  message("Computing DI of newdata...")
 
 
   # check if variables are in newdata
@@ -294,26 +287,59 @@ aoa <- function(newdata,
   }
 
   if (calc_LPD == FALSE) {
+    message("Computing DI of new data...")
     mindist <- rep(NA, nrow(newdata))
     mindist[okrows] <-
       .mindistfun(newdataCC, train_scaled, method, S_inv)
     DI_out <- mindist / trainDI$trainDist_avrgmean
   }
 
+  # if (calc_LPD == TRUE) {
+  #   message("Computing LPD of newdata...")
+  #
+  #   knndist <- matrix(NA, nrow(newdata), maxLPD)
+  #   knndist[okrows,] <- .knndistfun(newdataCC, train_scaled, method, S_inv, maxLPD = maxLPD)
+  #
+  #   DI_out_knndist <- knndist / trainDI$trainDist_avrgmean
+  #   DI_out <- c(DI_out_knndist[,1])
+  #
+  #   # start_time <- Sys.time()
+  #   LPD_out <-
+  #     apply(DI_out_knndist, 1, function(row)
+  #       sum(row < trainDI$threshold))
+  #   # end_time <- Sys.time()
+  #
+  #   # set maxLPD to max of LPD_out if
+  #   realMaxLPD <- max(LPD_out, na.rm = T)
+  #   if (maxLPD > realMaxLPD) {
+  #     if (inherits(maxLPD, c("numeric", "integer"))) {
+  #       message("Your specified maxLPD is bigger than the real maxLPD of you predictor data.")
+  #     }
+  #     message(paste("maxLPD is set to", realMaxLPD))
+  #     trainDI$maxLPD <- realMaxLPD
+  #   }
+  # }
+
   if (calc_LPD == TRUE) {
-    message("Computing LPD of newdata...")
+    message("Computing DI and LPD of new data...")
 
-    knndist <- matrix(NA, nrow(newdata), maxLPD)
-    knndist[okrows,] <- .knndistfun(newdataCC, train_scaled, method, S_inv, maxLPD = maxLPD)
+    pb <- txtProgressBar(min = 0,
+                         max = nrow(newdataCC),
+                         style = 3)
 
-    DI_out_knndist <- knndist / trainDI$trainDist_avrgmean
-    DI_out <- c(DI_out_knndist[,1])
+    DI_out <- rep(NA, nrow(newdata))
+    LPD_out <- rep(NA, nrow(newdata))
+    for (i in seq(nrow(newdataCC))) {
+      knnDist  <- .knndistfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = maxLPD)
+      knnDI <- knnDist / trainDI$trainDist_avrgmean
+      knnDI <- c(knnDI)
 
-    # start_time <- Sys.time()
-    LPD_out <-
-      apply(DI_out_knndist, 1, function(row)
-        sum(row < trainDI$threshold))
-    # end_time <- Sys.time()
+      DI_out[okrows[i]] <- knnDI[1]
+      LPD_out[okrows[i]] <- sum(knnDI < trainDI$threshold)
+      setTxtProgressBar(pb, i)
+    }
+
+    close(pb)
 
     # set maxLPD to max of LPD_out if
     realMaxLPD <- max(LPD_out, na.rm = T)
@@ -387,6 +413,8 @@ aoa <- function(newdata,
     )
   }
 
+  message("Finished!")
+
   class(result) <- "aoa"
   return(result)
 }
@@ -397,38 +425,16 @@ aoa <- function(newdata,
             reference,
             method,
             S_inv = NULL,
-            maxLPD = maxLPD,
-            pb = pb) {
+            maxLPD = maxLPD) {
     if (method == "L2") {
       # Euclidean Distance
       return(FNN::knnx.dist(reference, point, k = maxLPD))
     } else if (method == "MD") {
-      # Mahalanobis Distance
-      message("Calculating Mahalanobis Distance Matrix...")
-
-      num_points <- dim(point)[1]
-      num_reference <- dim(reference)[1]
-
-      pb <- txtProgressBar(min = 0,
-                           max = num_points,
-                           style = 3)
-
-      distances <- matrix(NA, nrow = num_points, ncol = maxLPD)
-
-      for (y in 1:num_points) {
-        dist_vector <- numeric(num_reference)
-
-        for (x in 1:num_reference) {
-          diff <- point[y, ] - reference[x, ]
-          dist_vector[x] <- sqrt(t(diff) %*% S_inv %*% diff)
-        }
-
-        sorted_indices <- order(dist_vector)
-        distances[y, ] <- dist_vector[sorted_indices[1:maxLPD]]
-        setTxtProgressBar(pb, y)
-      }
-      close(pb)
-      return(distances)
+      return(t(sapply(1:dim(point)[1],
+                      function(y)
+                        sort(sapply(1:dim(reference)[1],
+                                    function(x)
+                                      sqrt(t(point[y, ] - reference[x, ]) %*% S_inv %*% (point[y, ] - reference[x,]) )))[1:maxLPD])))
     }
   }
 
