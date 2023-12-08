@@ -22,8 +22,7 @@
 #' Relevant if some data points are excluded, e.g. when using \code{\link{nndm}}.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer.
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
-#' @param LPD Logical. Indicates wheather the L should be calculated or not.
-#' @param maxLPD Integer or character. Only if \code{LPD = TRUE}. Number of nearest neighbors to be considered for the calculation of the LPD. Can be 'max' or 'opt' to consider all neighbors or the optimal value of neighbors derived from the CV folds.
+#' @param LPD Logical. Indicates wheather the LPD should be calculated or not.
 #'
 #' @seealso \code{\link{aoa}}
 #' @importFrom graphics boxplot
@@ -41,7 +40,6 @@
 #'  \item{threshold}{The DI threshold used for inside/outside AOA}
 #'  \item{trainLPD}{LPD of the training data}
 #'  \item{avrgLPD}{Average LPD of the training data}
-#'  \item{maxLPD}{Maximum neighbors considered for LPD calculation}
 #'
 #'
 #'
@@ -109,8 +107,7 @@ trainDI <- function(model = NA,
                     CVtrain = NULL,
                     method="L2",
                     useWeight = TRUE,
-                    LPD = FALSE,
-                    maxLPD = "opt"){
+                    LPD = FALSE){
 
   # get parameters if they are not provided in function call-----
   if(is.null(train)){train = aoa_get_train(model)}
@@ -191,6 +188,11 @@ trainDI <- function(model = NA,
     S_inv <- MASS::ginv(S)
   }
 
+  message("Computing DI of training data...")
+  pb <- txtProgressBar(min = 0,
+                       max = nrow(train),
+                       style = 3)
+
   for(i in seq(nrow(train))){
 
     # distance to all other training data (for average)
@@ -221,7 +223,9 @@ trainDI <- function(model = NA,
     }else{
       trainDist_min <- append(trainDist_min, min(trainDist, na.rm = TRUE))
     }
+    setTxtProgressBar(pb, i)
   }
+  close(pb)
   trainDist_avrgmean <- mean(trainDist_avrg,na.rm=TRUE)
 
 
@@ -242,47 +246,49 @@ trainDI <- function(model = NA,
   # note: previous versions of CAST derived the threshold this way:
   # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
-  # calculate trainLPD, avrgLPD and maxLPD
-  if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
+
+  # calculate trainLPD and avrgLPD according to the CV folds
+  if (LPD == TRUE) {
+    message("Computing LPD of training data...")
+    pb <- txtProgressBar(min = 0,
+                         max = nrow(train),
+                         style = 3)
+
     trainLPD <- c()
-    for (j in  seq(CVtest)) {
+    for (j in  seq(nrow(train))) {
 
-      if(method=="MD"){
-        if(dim(train[CVtrain[[j]],])[2] == 1){
-          S <- matrix(stats::var(train[CVtrain[[j]],]), 1, 1)
-        } else {
-          S <- stats::cov(train[CVtrain[[j]],])
+      # calculate  distance to other training data:
+      trainDist      <- .alldistfun(t(matrix(train[j,])), train, method, sorted = FALSE, S_inv)
+      trainDist[j]   <- NA
+      DItrainDist <- trainDist/trainDist_avrgmean
+
+      # mask of any data that are not used for training for the respective data point (using CV)
+      whichfold <- NA
+      if(!is.null(CVtrain)&!is.null(CVtest)){
+        whichfold <- as.numeric(which(lapply(CVtest,function(x){any(x==j)})==TRUE)) # index of the fold where i is held back
+        if(length(whichfold)!=0){ # in case that a data point is never used for testing
+          DItrainDist[!seq(nrow(train))%in%CVtrain[[whichfold]]] <- NA # everything that is not in the training data for i is ignored
         }
-        S_inv <- MASS::ginv(S)
+        if(length(whichfold)==0){#in case that a data point is never used for testing, the distances for that point are ignored
+          DItrainDist <- NA
+        }
       }
 
-      if (length(CVtest[[j]]) > 1) {
-        testFoldDist <-
-          .alldistfun(train[CVtest[[j]],], train[CVtrain[[j]],], method, S_inv=S_inv)
+      #######################################
+
+      if (length(whichfold)==0){
+        trainLPD <- append(trainLPD, NA)
       } else {
-        testFoldDist <-
-          .alldistfun(t(train[CVtest[[j]],]), train[CVtrain[[j]],], method, S_inv=S_inv)
+        trainLPD <- append(trainLPD, sum(DItrainDist[,1] < thres, na.rm = TRUE))
       }
-
-      DItestFoldDist <- testFoldDist / trainDist_avrgmean
-
-      count_list <-
-        apply(DItestFoldDist, 1, function(row)
-          sum(row < thres))
-
-      trainLPD <- append(trainLPD, count_list)
+      setTxtProgressBar(pb, j)
     }
+
+    close(pb)
 
     # Average LPD in trainData
     avrgLPD <- round(mean(trainLPD))
-
-    # Optimal maxLPD ----
-    if (maxLPD == "opt") {
-      maxLPD <- stats::quantile(trainLPD, 0.25,na.rm=TRUE)
-      message(paste("maxLPD was set to", maxLPD))
-    }
   }
-
 
 
   # Return: trainDI Object -------
@@ -300,10 +306,9 @@ trainDI <- function(model = NA,
     method = method
   )
 
-  if (LPD == TRUE && !is.null(CVtest) && !is.null(CVtrain)) {
+  if (LPD == TRUE) {
     aoa_results$trainLPD <- trainLPD
     aoa_results$avrgLPD <- avrgLPD
-    aoa_results$maxLPD <- maxLPD
   }
 
   class(aoa_results) = "trainDI"
@@ -491,7 +496,6 @@ aoa_get_variables <- function(variables, model, train){
       return(t(sapply(1:dim(point)[1],
                       function(y) sapply(1:dim(reference)[1],
                                          function(x) sqrt( t(point[y,] - reference[x,]) %*% S_inv %*% (point[y,] - reference[x,]) )))))
-
     }
   }
 }
