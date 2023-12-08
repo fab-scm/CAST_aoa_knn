@@ -188,6 +188,11 @@ trainDI <- function(model = NA,
     S_inv <- MASS::ginv(S)
   }
 
+  message("Computing DI of training data...")
+  pb <- txtProgressBar(min = 0,
+                       max = nrow(train),
+                       style = 3)
+
   for(i in seq(nrow(train))){
 
     # distance to all other training data (for average)
@@ -218,7 +223,9 @@ trainDI <- function(model = NA,
     }else{
       trainDist_min <- append(trainDist_min, min(trainDist, na.rm = TRUE))
     }
+    setTxtProgressBar(pb, i)
   }
+  close(pb)
   trainDist_avrgmean <- mean(trainDist_avrg,na.rm=TRUE)
 
 
@@ -241,6 +248,11 @@ trainDI <- function(model = NA,
 
   # calculate trainLPD and avrgLPD according to the CV folds
   if (LPD == TRUE) {
+    message("Computing LPD of training data...")
+    pb <- txtProgressBar(min = 0,
+                         max = nrow(train),
+                         style = 3)
+
     trainLPD <- c()
     for (j in  seq(nrow(train))) {
 
@@ -252,7 +264,7 @@ trainDI <- function(model = NA,
       # mask of any data that are not used for training for the respective data point (using CV)
       whichfold <- NA
       if(!is.null(CVtrain)&!is.null(CVtest)){
-        whichfold <-  as.numeric(which(lapply(CVtest,function(x){any(x==j)})==TRUE)) # index of the fold where i is held back
+        whichfold <- as.numeric(which(lapply(CVtest,function(x){any(x==j)})==TRUE)) # index of the fold where i is held back
         if(length(whichfold)!=0){ # in case that a data point is never used for testing
           DItrainDist[!seq(nrow(train))%in%CVtrain[[whichfold]]] <- NA # everything that is not in the training data for i is ignored
         }
@@ -268,7 +280,10 @@ trainDI <- function(model = NA,
       } else {
         trainLPD <- append(trainLPD, sum(DItrainDist[,1] < thres, na.rm = TRUE))
       }
+      setTxtProgressBar(pb, j)
     }
+
+    close(pb)
 
     # Average LPD in trainData
     avrgLPD <- round(mean(trainLPD))
@@ -480,7 +495,6 @@ aoa_get_variables <- function(variables, model, train){
       return(t(sapply(1:dim(point)[1],
                       function(y) sapply(1:dim(reference)[1],
                                          function(x) sqrt( t(point[y,] - reference[x,]) %*% S_inv %*% (point[y,] - reference[x,]) )))))
-
     }
   }
 }
