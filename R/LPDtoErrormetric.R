@@ -181,7 +181,7 @@ multiCV_LPD <- function(model, length.out, method, useWeight,...){
 
     # retrain model and calculate AOA
     model_new <- do.call(caret::train,mcall)
-    trainLPD_new <- trainLPD(model_new, method=method, useWeight=useWeight, LPD = TRUE)
+    trainDI_new <- trainDI(model_new, method=method, useWeight=useWeight, LPD = TRUE)
 
 
     # get cross-validated predictions, order them  and use only those located in the AOA
@@ -193,7 +193,7 @@ multiCV_LPD <- function(model, length.out, method, useWeight,...){
   }
 
   attr(preds_all, "Avrg. trainLPD") <- trainDI_new$threshold
-  message(paste0("Note: multiCV=TRUE calculated new average LPD of ", trainLPD_new$avrgLPD,
+  message(paste0("Note: multiCV=TRUE calculated new average LPD of ", trainDI_new$avrgLPD,
                  "\nAverage LPD is stored in the attributes, access with attr(error_model, 'avrgLPD').",
                  "\nPlease refere to examples and details for further information."))
   return(preds_all)
