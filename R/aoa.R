@@ -128,7 +128,6 @@
 #' @export aoa
 #' @aliases aoa
 
-
 aoa <- function(newdata,
                 model=NA,
                 trainDI = NA,
@@ -320,7 +319,6 @@ aoa <- function(newdata,
   #     trainDI$maxLPD <- realMaxLPD
   #   }
   # }
-
 
   if (calc_LPD == TRUE) {
     message("Computing DI and LPD of new data...")
