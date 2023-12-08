@@ -418,7 +418,7 @@ exploreAOA <- function(aoa) {
                            opacity = input$opacity,
                            group = "Raster") %>%
             addLegend(
-              position = "topright",
+              position = "bottomright",
               colors = layerLegendProps$colors,
               labels = layerLegendProps$labels,
               values = layerLegendProps$values,
@@ -440,7 +440,7 @@ exploreAOA <- function(aoa) {
                            opacity = input$opacity,
                            group = "Raster") %>%
             addLegend(
-              position = "topright",
+              position = "bottomright",
               colors = layerLegendProps$colors,
               labels = layerLegendProps$labels,
               values = layerLegendProps$values,
@@ -461,7 +461,7 @@ exploreAOA <- function(aoa) {
                            opacity = input$opacity,
                            group = "Raster") %>%
             addLegend(
-              position = "topright",
+              position = "bottomright",
               pal = layerLegendProps$pal,
               values = layerLegendProps$values,
               title = layerLegendProps$title,

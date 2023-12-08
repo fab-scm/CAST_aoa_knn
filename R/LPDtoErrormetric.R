@@ -4,7 +4,7 @@
 #' @param trainDI the result of \code{\link{trainDI}} or aoa object \code{\link{aoa}}
 #' @param multiCV Logical. Re-run model fitting and validation with different CV strategies. See details.
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the LPD~performance relationship. Currently lm, scam, nls are supported
+#' @param calib Character. Function to model the LPD~performance relationship. Currently lm and scam are supported
 #' @param length.out Numeric. Only used if multiCV=TRUE. Number of cross-validation folds. See details.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
@@ -29,7 +29,7 @@
 LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
                             length.out = 10, window.size = 5, calib = "scam",
                             method= "L2", useWeight=TRUE,
-                            k = 6, m = 2){
+                            k = 4, m = 2){
 
 
   if(inherits(trainDI,"aoa")){
@@ -126,19 +126,16 @@ errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
            call. = FALSE)
     }
     if (model$maximize){ # e.g. accuracy, kappa, r2
-      bs="mpd"
+      bs="mpi"
     }else{
-      bs="mpi" #e.g. RMSE
+      bs="mpd" #e.g. RMSE
     }
 
     errormodel <- scam::scam(metric~s(LPD, k=k, bs=bs, m=m),
                              data=performance,
                              family=stats::gaussian(link="identity"))
   }
-  if(calib=="nls"){
-    errormodel <- nls(metric ~ a*exp(LPD*b), data = performance,
-                      start = list(a = 1, b = 0))
-  }
+
   attr(errormodel, "performance") = performance
 
   return(errormodel)
@@ -184,7 +181,7 @@ multiCV_LPD <- function(model, length.out, method, useWeight,...){
 
     # retrain model and calculate AOA
     model_new <- do.call(caret::train,mcall)
-    trainLPD_new <- trainLPD(model_new, method=method, useWeight=useWeight)
+    trainLPD_new <- trainLPD(model_new, method=method, useWeight=useWeight, LPD = TRUE)
 
 
     # get cross-validated predictions, order them  and use only those located in the AOA
@@ -196,8 +193,8 @@ multiCV_LPD <- function(model, length.out, method, useWeight,...){
   }
 
   attr(preds_all, "Avrg. trainLPD") <- trainDI_new$threshold
-  message(paste0("Note: multiCV=TRUE calculated new AOA threshold of ", trainLPD_new$avrgLPD,
-                 "\nAvrg LPD is stored in the attributes, access with attr(error_model, 'Avrg LPD').",
+  message(paste0("Note: multiCV=TRUE calculated new average LPD of ", trainLPD_new$avrgLPD,
+                 "\nAverage LPD is stored in the attributes, access with attr(error_model, 'avrgLPD').",
                  "\nPlease refere to examples and details for further information."))
   return(preds_all)
 

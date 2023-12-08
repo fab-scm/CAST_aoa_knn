@@ -15,18 +15,18 @@
 
   AOA <- aoa(predictors, model, LPD = TRUE, maxLPD = 1)
 
-  errormodel <- LPDtoErrormetric(model, AOA)
+  errormodel <- DI_LPDtoErrormetric(model, AOA)
   plot(errormodel)
 
-  expected_error = terra::predict(AOA$LPD, errormodel)
+  expected_error = terra::predict(rast(list(AOA$DI, AOA$LPD)), errormodel)
   plot(expected_error)
 
 
   # with multiCV = TRUE
-  errormodel = LPDtoErrormetric(model, AOA, multiCV = TRUE, length.out = 3)
+  errormodel = DI_LPDtoErrormetric(model, AOA, multiCV = TRUE, length.out = 3)
   plot(errormodel)
 
-  expected_error = terra::predict(AOA$LPD, errormodel)
+  expected_error = terra::predict(rast(list(AOA$DI, AOA$LPD)), errormodel)
   plot(expected_error)
 
   # mask AOA based on new threshold from multiCV
