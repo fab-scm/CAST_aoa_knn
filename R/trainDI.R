@@ -246,6 +246,7 @@ trainDI <- function(model = NA,
   # note: previous versions of CAST derived the threshold this way:
   # thres <- grDevices::boxplot.stats(TrainDI)$stats[5]
 
+
   # calculate trainLPD and avrgLPD according to the CV folds
   if (LPD == TRUE) {
     message("Computing LPD of training data...")
