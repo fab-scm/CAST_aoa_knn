@@ -259,8 +259,8 @@ trainDI <- function(model = NA,
 
       # calculate  distance to other training data:
       trainDist      <- .alldistfun(t(matrix(train[j,])), train, method, sorted = FALSE, S_inv)
-      trainDist[j]   <- NA
       DItrainDist <- trainDist/trainDist_avrgmean
+      DItrainDist[j]   <- NA
 
       # mask of any data that are not used for training for the respective data point (using CV)
       whichfold <- NA
