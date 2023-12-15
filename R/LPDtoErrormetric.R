@@ -29,7 +29,7 @@
 LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
                             length.out = 10, window.size = 5, calib = "scam",
                             method= "L2", useWeight=TRUE,
-                            k = 4, m = 2){
+                            k = 6, m = 2){
 
 
   if(inherits(trainDI,"aoa")){

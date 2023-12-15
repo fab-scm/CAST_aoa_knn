@@ -30,7 +30,7 @@
 DI_LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
                             length.out = 10, window.size = 5, calib = "scam",
                             method= "L2", useWeight=TRUE,
-                            kDI = 6, mDI = 2, kLPD = 4, mLPD = 2){
+                            kDI = 6, mDI = 2, kLPD = 6, mLPD = 2){
 
 
   if(inherits(trainDI,"aoa")){
@@ -132,6 +132,18 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, kDI, mDI, kL
   performance <- merge(performanceDI, performanceLPD, by = c("ID", "DI", "LPD", "pred", "obs"))
   performance$metric <- (performance$metric.x + performance$metric.y) / 2
   names(performance) <- c("ID", "DI", "LPD", "pred", "obs", "metric.DI", "ll.DI", "ul.DI", "metric.LPD", "ll.LPD", "ul.LPD", "metric")
+
+  # performance <- preds_all[order(preds_all$DI),]
+  # # calculate performance for moving window:
+  # performance$metric <- zoo::rollapply(performance[,1:2], window.size,
+  #                                      FUN=function(x){evalfunc(x[,1],x[,2])},
+  #                                      by.column=F,align = "center",fill=NA)
+  # performance$ll <- data.table::shift(performance$DI,window.size/2)
+  # performance$ul <- data.table::shift(performance$DI,-round(window.size/2),0)
+  # performance$LPD <- zoo::rollapply(performance[,4], window.size,
+  #                                   FUN=function(x){round(mean(x), digits = 0)},
+  #                                   by.column=F,align = "center",fill=NA)
+  # performance <- performance[!is.na(performance$metric),]
 
   ### Estimate Error:
   if(calib=="lm"){
