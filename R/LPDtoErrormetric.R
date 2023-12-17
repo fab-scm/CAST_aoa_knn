@@ -4,7 +4,7 @@
 #' @param trainDI the result of \code{\link{trainDI}} or aoa object \code{\link{aoa}}
 #' @param multiCV Logical. Re-run model fitting and validation with different CV strategies. See details.
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the LPD~performance relationship. Currently lm and scam are supported
+#' @param calib Character. Function to model the LPD~performance relationship. Currently lm, scam and exp are supported
 #' @param length.out Numeric. Only used if multiCV=TRUE. Number of cross-validation folds. See details.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
