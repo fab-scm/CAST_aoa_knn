@@ -173,6 +173,20 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, kDI, mDI, kL
   if(calib=="exp"){
     errormodel <- lm(metric ~ DI + log(LPD), data = performance)
   }
+  if(calib=="scamexp"){
+    if (!requireNamespace("scam", quietly = TRUE)) {
+      stop("Package \"scam\" needed for this function to work. Please install it.",
+           call. = FALSE)
+    }
+    if (model$maximize){ # e.g. accuracy, kappa, r2
+      bsDI="mpd"
+    }else{
+      bsDI="mpi" #e.g. RMSE
+    }
+    errormodel <- scam::scam(metric ~ s(DI, k=kDI, bs=bsDI, m=mDI) + log(LPD),
+                             data=performance,
+                             family=stats::gaussian(link="identity"))
+  }
 
   attr(errormodel, "performance") = performance
 

@@ -135,6 +135,9 @@ errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
                              data=performance,
                              family=stats::gaussian(link="identity"))
   }
+  if(calib=="exp"){
+    errormodel <- lm(metric ~ log(LPD), data = performance)
+  }
 
   attr(errormodel, "performance") = performance
 
