@@ -1,5 +1,5 @@
 #' Model the relationship between the DI and LPD and the prediction error
-#' @description Performance metrics are calculated for moving windows of DI values of cross-validated training data
+#' @description Performance metrics are calculated for moving windows of DI and LPD values of cross-validated training data
 #' @param model the model used to get the AOA
 #' @param trainDI the result of \code{\link{trainDI}} or aoa object \code{\link{aoa}}
 #' @param multiCV Logical. Re-run model fitting and validation with different CV strategies. See details.
@@ -11,7 +11,7 @@
 #' @param k Numeric. See mgcv::s
 #' @param m Numeric. See mgcv::s
 #' @details If multiCV=TRUE the model is re-fitted and validated by length.out new cross-validations where the cross-validation folds are defined by clusters in the predictor space,
-#' ranging from three clusters to LOOCV. Hence, a large range of DI values is created during cross-validation.
+#' ranging from three clusters to LOOCV. Hence, a large range of DI and DI values is created during cross-validation.
 #' If the AOA threshold based on the calibration data from multiple CV is larger than the original AOA threshold (which is likely if extrapolation situations are created during CV),
 #' the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full documentation of the methodology.
 #' @return A scam or linear model

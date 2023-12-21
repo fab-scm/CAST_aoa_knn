@@ -44,11 +44,11 @@ DI_LPDtoErrormetric(
 A scam or linear model
 }
 \description{
-Performance metrics are calculated for moving windows of DI values of cross-validated training data
+Performance metrics are calculated for moving windows of DI and LPD values of cross-validated training data
 }
 \details{
 If multiCV=TRUE the model is re-fitted and validated by length.out new cross-validations where the cross-validation folds are defined by clusters in the predictor space,
-ranging from three clusters to LOOCV. Hence, a large range of DI values is created during cross-validation.
+ranging from three clusters to LOOCV. Hence, a large range of DI and DI values is created during cross-validation.
 If the AOA threshold based on the calibration data from multiple CV is larger than the original AOA threshold (which is likely if extrapolation situations are created during CV),
 the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full documentation of the methodology.
 }
