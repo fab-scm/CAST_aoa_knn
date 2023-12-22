@@ -1,17 +1,17 @@
 #' Model the relationship between the DI and LPD and the prediction error
-#' @description Performance metrics are calculated for moving windows of DI values of cross-validated training data
+#' @description Performance metrics are calculated for moving windows of DI and LPD values of cross-validated training data
 #' @param model the model used to get the AOA
 #' @param trainDI the result of \code{\link{trainDI}} or aoa object \code{\link{aoa}}
 #' @param multiCV Logical. Re-run model fitting and validation with different CV strategies. See details.
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the DI+LPD~performance relationship. Currently lm and scam are supported
+#' @param calib Character. Function to model the DI+LPD~performance relationship. Currently lm, scam, lm_exp and scam_exp are supported
 #' @param length.out Numeric. Only used if multiCV=TRUE. Number of cross-validation folds. See details.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
 #' @param k Numeric. See mgcv::s
 #' @param m Numeric. See mgcv::s
 #' @details If multiCV=TRUE the model is re-fitted and validated by length.out new cross-validations where the cross-validation folds are defined by clusters in the predictor space,
-#' ranging from three clusters to LOOCV. Hence, a large range of DI values is created during cross-validation.
+#' ranging from three clusters to LOOCV. Hence, a large range of DI and DI values is created during cross-validation.
 #' If the AOA threshold based on the calibration data from multiple CV is larger than the original AOA threshold (which is likely if extrapolation situations are created during CV),
 #' the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full documentation of the methodology.
 #' @return A scam or linear model
@@ -30,7 +30,7 @@
 DI_LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
                             length.out = 10, window.size = 5, calib = "scam",
                             method= "L2", useWeight=TRUE,
-                            kDI = 6, mDI = 2, kLPD = 4, mLPD = 2){
+                            kDI = 6, mDI = 2, kLPD = 6, mLPD = 2){
 
 
   if(inherits(trainDI,"aoa")){
@@ -133,6 +133,18 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, kDI, mDI, kL
   performance$metric <- (performance$metric.x + performance$metric.y) / 2
   names(performance) <- c("ID", "DI", "LPD", "pred", "obs", "metric.DI", "ll.DI", "ul.DI", "metric.LPD", "ll.LPD", "ul.LPD", "metric")
 
+  # performance <- preds_all[order(preds_all$DI),]
+  # # calculate performance for moving window:
+  # performance$metric <- zoo::rollapply(performance[,1:2], window.size,
+  #                                      FUN=function(x){evalfunc(x[,1],x[,2])},
+  #                                      by.column=F,align = "center",fill=NA)
+  # performance$ll <- data.table::shift(performance$DI,window.size/2)
+  # performance$ul <- data.table::shift(performance$DI,-round(window.size/2),0)
+  # performance$LPD <- zoo::rollapply(performance[,4], window.size,
+  #                                   FUN=function(x){round(mean(x), digits = 0)},
+  #                                   by.column=F,align = "center",fill=NA)
+  # performance <- performance[!is.na(performance$metric),]
+
   ### Estimate Error:
   if(calib=="lm"){
     errormodel <- lm(metric ~ DI+ LPD, data = performance)
@@ -158,8 +170,22 @@ errorModel_DI_LPD <- function(preds_all, model, window.size, calib, kDI, mDI, kL
                              data=performance,
                              family=stats::gaussian(link="identity"))
   }
-  if(calib=="exp"){
+  if(calib=="lm_exp"){
     errormodel <- lm(metric ~ DI + log(LPD), data = performance)
+  }
+  if(calib=="scam_exp"){
+    if (!requireNamespace("scam", quietly = TRUE)) {
+      stop("Package \"scam\" needed for this function to work. Please install it.",
+           call. = FALSE)
+    }
+    if (model$maximize){ # e.g. accuracy, kappa, r2
+      bsDI="mpd"
+    }else{
+      bsDI="mpi" #e.g. RMSE
+    }
+    errormodel <- scam::scam(metric ~ s(DI, k=kDI, bs=bsDI, m=mDI) + log(LPD),
+                             data=performance,
+                             family=stats::gaussian(link="identity"))
   }
 
   attr(errormodel, "performance") = performance

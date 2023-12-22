@@ -15,7 +15,7 @@ DI_LPDtoErrormetric(
   useWeight = TRUE,
   kDI = 6,
   mDI = 2,
-  kLPD = 4,
+  kLPD = 6,
   mLPD = 2
 )
 }
@@ -30,7 +30,7 @@ DI_LPDtoErrormetric(
 
 \item{window.size}{Numeric. Size of the moving window. See \code{\link{rollapply}}.}
 
-\item{calib}{Character. Function to model the DI+LPD~performance relationship. Currently lm and scam are supported}
+\item{calib}{Character. Function to model the DI+LPD~performance relationship. Currently lm, scam, lm_exp and scam_exp are supported}
 
 \item{method}{Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation}
 
@@ -44,11 +44,11 @@ DI_LPDtoErrormetric(
 A scam or linear model
 }
 \description{
-Performance metrics are calculated for moving windows of DI values of cross-validated training data
+Performance metrics are calculated for moving windows of DI and LPD values of cross-validated training data
 }
 \details{
 If multiCV=TRUE the model is re-fitted and validated by length.out new cross-validations where the cross-validation folds are defined by clusters in the predictor space,
-ranging from three clusters to LOOCV. Hence, a large range of DI values is created during cross-validation.
+ranging from three clusters to LOOCV. Hence, a large range of DI and DI values is created during cross-validation.
 If the AOA threshold based on the calibration data from multiple CV is larger than the original AOA threshold (which is likely if extrapolation situations are created during CV),
 the AOA threshold changes accordingly. See Meyer and Pebesma (2021) for the full documentation of the methodology.
 }

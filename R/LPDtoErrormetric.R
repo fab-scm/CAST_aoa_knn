@@ -4,7 +4,7 @@
 #' @param trainDI the result of \code{\link{trainDI}} or aoa object \code{\link{aoa}}
 #' @param multiCV Logical. Re-run model fitting and validation with different CV strategies. See details.
 #' @param window.size Numeric. Size of the moving window. See \code{\link{rollapply}}.
-#' @param calib Character. Function to model the LPD~performance relationship. Currently lm and scam are supported
+#' @param calib Character. Function to model the LPD~performance relationship. Currently lm, scam and exp are supported
 #' @param length.out Numeric. Only used if multiCV=TRUE. Number of cross-validation folds. See details.
 #' @param method Character. Method used for distance calculation. Currently euclidean distance (L2) and Mahalanobis distance (MD) are implemented but only L2 is tested. Note that MD takes considerably longer. See ?aoa for further explanation
 #' @param useWeight Logical. Only if a model is given. Weight variables according to importance in the model?
@@ -29,7 +29,7 @@
 LPDtoErrormetric <- function(model, trainDI, multiCV=FALSE,
                             length.out = 10, window.size = 5, calib = "scam",
                             method= "L2", useWeight=TRUE,
-                            k = 4, m = 2){
+                            k = 6, m = 2){
 
 
   if(inherits(trainDI,"aoa")){
@@ -134,6 +134,9 @@ errorModel_LPD <- function(preds_all, model, window.size, calib, k, m){
     errormodel <- scam::scam(metric~s(LPD, k=k, bs=bs, m=m),
                              data=performance,
                              family=stats::gaussian(link="identity"))
+  }
+  if(calib=="exp"){
+    errormodel <- lm(metric ~ log(LPD), data = performance)
   }
 
   attr(errormodel, "performance") = performance
