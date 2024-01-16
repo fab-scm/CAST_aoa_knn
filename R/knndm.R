@@ -1,4 +1,4 @@
-#' [EXPERIMENTAL] K-fold Nearest Neighbour Distance Matching
+#' K-fold Nearest Neighbour Distance Matching
 #' @description
 #' This function implements the kNNDM algorithm and returns the necessary
 #' indices to perform a k-fold NNDM CV for map validation.
@@ -132,13 +132,13 @@
 #' library(ggplot2)
 #'
 #' ### prepare sample data:
-#' dat <- get(load(system.file("extdata","Cookfarm.RData",package="CAST")))
+#' dat <- readRDS(system.file("extdata","Cookfarm.RDS",package="CAST"))
 #' dat <- aggregate(dat[,c("DEM","TWI", "NDRE.M", "Easting", "Northing","VW")],
 #'    by=list(as.character(dat$SOURCEID)),mean)
 #' pts <- dat[,-1]
 #' pts <- st_as_sf(pts,coords=c("Easting","Northing"))
 #' st_crs(pts) <- 26911
-#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.grd",package="CAST"))
+#' studyArea <- rast(system.file("extdata","predictors_2012-03-25.tif",package="CAST"))
 #' studyArea[!is.na(studyArea)] <- 1
 #' studyArea <- as.polygons(studyArea, values = FALSE, na.all = TRUE) |>
 #'     st_as_sf() |>
