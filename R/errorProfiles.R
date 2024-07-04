@@ -179,8 +179,14 @@ errorModel <- function(preds_all, model, window.size, calib, k, m, variable){
   performance$ul <- data.table::shift(performance[,variable],-round(window.size/2),0)
   performance <- performance[!is.na(performance$metric),]
 
+
+  performance$rowIndex <- row.names(performance)
+  resample_df <- rfmodel_ffs[["pred"]][c("rowIndex", "Resample")]
+  performance <- merge(DI_performance, resample_df, by = "rowIndex")
+
+
   #performance <-  performance[,c(variable,"metric")]
-  
+
   ### Estimate Error:
   if(calib=="lm"){
     errormodel <- lm(metric ~ ., data = performance)
