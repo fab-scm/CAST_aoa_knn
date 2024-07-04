@@ -182,7 +182,7 @@ errorModel <- function(preds_all, model, window.size, calib, k, m, variable){
 
   performance$rowIndex <- row.names(performance)
   resample_df <- model[["pred"]][c("rowIndex", "Resample")]
-  performance <- merge(DI_performance, resample_df, by = "rowIndex")
+  performance <- merge(performance, resample_df, by = "rowIndex")
 
 
   #performance <-  performance[,c(variable,"metric")]
