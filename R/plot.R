@@ -518,7 +518,7 @@ plot.errorModel <- function(x, ...){
   variable = attr(x, "variable")
   metric = attr(x, "metric")
 
-  performance = attr(x, "performance")[,c(variable, "metric")]
+  performance = attr(x, "performance")[,c(variable, "metric", "Resample")]
   performance$what = "cross-validation"
 
   model_line = data.frame(variable = performance[, variable],
@@ -526,7 +526,7 @@ plot.errorModel <- function(x, ...){
                           what = "model")
 
   p = ggplot()+
-    geom_point(data = performance, mapping = aes_string(x = variable, y = "metric", shape = "what"))+
+    geom_point(data = performance, mapping = aes_string(x = variable, y = "metric", shape = "what", color = "Resample"))+
     geom_line(data = model_line, mapping =  aes_string(x = "variable", y = "metric", linetype = "what", color = "what"), lwd = 1)+
     labs(x = variable, y = metric)+
     theme(legend.title = element_blank(), legend.position = "bottom")
