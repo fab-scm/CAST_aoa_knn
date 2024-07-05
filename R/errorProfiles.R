@@ -179,11 +179,11 @@ errorModel <- function(preds_all, model, window.size, calib, k, m, variable){
   performance$ul <- data.table::shift(performance[,variable],-round(window.size/2),0)
   performance <- performance[!is.na(performance$metric),]
 
-  if(model$method == "rf" || model$method == "ranger") {
-    performance$rowIndex <- row.names(performance)
-    resample_df <- subset(model[["pred"]], mtry == model$finalModel$mtry)[c("rowIndex", "Resample")]
-    performance <- merge(performance, resample_df, by = "rowIndex")
-  }
+  # if(model$method == "rf" || model$method == "ranger") {
+  #   performance$rowIndex <- row.names(performance)
+  #   resample_df <- subset(model[["pred"]], mtry == model$finalModel$mtry)[c("rowIndex", "Resample")]
+  #   performance <- merge(performance, resample_df, by = "rowIndex")
+  # }
 
 
   #performance <-  performance[,c(variable,"metric")]
