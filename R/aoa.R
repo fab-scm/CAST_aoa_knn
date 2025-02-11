@@ -327,25 +327,49 @@ aoa <- function(newdata,
     if (indices) {
       Indices_out <- matrix(NA, nrow = nrow(newdata), ncol = maxLPD)
     }
-    for (i in seq(nrow(newdataCC))) {
+    # for (i in seq(nrow(newdataCC))) {
+    #   knnDist  <- .knndistfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = maxLPD)
+    #   knnDI <- knnDist / trainDI$trainDist_avrgmean
+    #   knnDI <- c(knnDI)
+    #
+    #   DI_out[okrows[i]] <- knnDI[1]
+    #   LPD_out[okrows[i]] <- sum(knnDI < trainDI$threshold)
+    #   knnIndex  <- .knnindexfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = LPD_out[okrows[i]])
+    #
+    #   if (indices) {
+    #     if (LPD_out[okrows[i]] > 0) {
+    #       Indices_out[okrows[i],1:LPD_out[okrows[i]]] <- knnIndex
+    #     }
+    #   }
+    #
+    #   if (verbose) {
+    #     setTxtProgressBar(pb, i)
+    #   }
+    # }
+
+    data <- mclapply(X = (seq(nrow(newdataCC))), mc.cores = 4, FUN = function(i) {
       knnDist  <- .knndistfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = maxLPD)
-      knnDI <- knnDist / trainDI$trainDist_avrgmean
-      knnDI <- c(knnDI)
+      knnDI <- c(knnDist / trainDI$trainDist_avrgmean)
 
-      DI_out[okrows[i]] <- knnDI[1]
-      LPD_out[okrows[i]] <- sum(knnDI < trainDI$threshold)
-      knnIndex  <- .knnindexfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = LPD_out[okrows[i]])
+      DI <- knnDI[1]
+      LPD <- sum(knnDI < trainDI$threshold)
 
-      if (indices) {
-        if (LPD_out[okrows[i]] > 0) {
-          Indices_out[okrows[i],1:LPD_out[okrows[i]]] <- knnIndex
-        }
+      if (LPD > 0) {
+        indexList <- .knnindexfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, k = LPD)
       }
 
-      if (verbose) {
-        setTxtProgressBar(pb, i)
+      result = data.frame(i = okrows[i], DI = DI, LPD = LPD)
+
+      if (LPD > 0) {
+        result$indexList <- list(c(indexList))
+      } else {
+        result$indexList <- NA
       }
-    }
+
+      return(result)
+    })
+
+    data <- do.call(rbind, data)
 
     if (verbose) {
       close(pb)
@@ -460,10 +484,10 @@ aoa <- function(newdata,
             reference,
             method,
             S_inv = NULL,
-            maxLPD = maxLPD) {
+            k = k) {
     if (method == "L2") {
       # Euclidean Distance
-      return(FNN::knnx.index(reference, point, k = maxLPD))
+      return(FNN::knnx.index(reference, point, k = k))
     } else if (method == "MD") {
       stop("MD currently not implemented for LPD")
     }
