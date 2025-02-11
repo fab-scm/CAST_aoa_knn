@@ -345,16 +345,22 @@ aoa <- function(newdata,
       LPD_out[okrows[i]] <- sum(knnDI < trainDI$threshold)
       knnIndex  <- .knnindexfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, maxLPD = LPD_out[okrows[i]],algorithm=algorithm)
 
-      if (indices) {
-        if (LPD_out[okrows[i]] > 0) {
-          Indices_out[okrows[i],1:LPD_out[okrows[i]]] <- knnIndex
-        }
+      if (LPD > 0) {
+        indexList <- .knnindexfun(t(matrix(newdataCC[i,])), train_scaled, method, S_inv, k = LPD)
       }
 
-      if (verbose) {
-        setTxtProgressBar(pb, i)
+      result = data.frame(i = okrows[i], DI = DI, LPD = LPD)
+
+      if (LPD > 0) {
+        result$indexList <- list(c(indexList))
+      } else {
+        result$indexList <- NA
       }
-    }
+
+      return(result)
+    })
+
+    data <- do.call(rbind, data)
 
     if (verbose) {
       close(pb)
@@ -469,10 +475,10 @@ aoa <- function(newdata,
             reference,
             method,
             S_inv = NULL,
-            maxLPD = maxLPD, algorithm) {
+            k = k) {
     if (method == "L2") {
       # Euclidean Distance
-      return(FNN::knnx.index(reference, point, k = maxLPD, algorithm = algorithm))
+      return(FNN::knnx.index(reference, point, k = k))
     } else if (method == "MD") {
       stop("MD currently not implemented for LPD")
     }

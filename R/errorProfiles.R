@@ -179,7 +179,16 @@ errorModel <- function(preds_all, model, window.size, calib, k, m, variable){
   performance$ul <- data.table::shift(performance[,variable],-round(window.size/2),0)
   performance <- performance[!is.na(performance$metric),]
 
-  performance <-  performance[,c(variable,"metric")]
+  # if(model$method == "rf" || model$method == "ranger") {
+  #   performance$rowIndex <- row.names(performance)
+  #   resample_df <- subset(model[["pred"]], mtry == model$finalModel$mtry)[c("Resample")]
+  #   resample_df$rowIndex <- row.names(resample_df)
+  #   performance <- merge(performance, resample_df, by = "rowIndex")
+  # }
+
+
+  #performance <-  performance[,c(variable,"metric")]
+
   ### Estimate Error:
   if(calib=="lm"){
     errormodel <- lm(metric ~ ., data = performance)

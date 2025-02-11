@@ -21,11 +21,6 @@ plot.trainDI = function(x, ...){
 
 
 
-
-
-
-
-
 #' @name plot
 #'
 #' @param x aoa object
@@ -116,7 +111,6 @@ plot.aoa = function(x, samplesize = 1000, variable = "DI", ...){
 
   return(plot)
 }
-
 
 
 #' @name plot
@@ -527,7 +521,7 @@ plot.errorModel <- function(x, ...){
 
   p = ggplot()+
     geom_point(data = performance, mapping = aes_string(x = variable, y = "metric", shape = "what"))+
-    geom_line(data = model_line, mapping =  aes_string(x = "variable", y = "metric", linetype = "what"), lwd = 1)+
+    geom_line(data = model_line, mapping =  aes_string(x = "variable", y = "metric", linetype = "what", color = "what"), lwd = 1)+
     labs(x = variable, y = metric)+
     theme(legend.title = element_blank(), legend.position = "bottom")
 
